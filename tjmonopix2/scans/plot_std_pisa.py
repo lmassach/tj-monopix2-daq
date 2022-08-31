@@ -3,19 +3,28 @@
 import argparse
 import glob
 import os
+from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
-from plot_utils_pisa import get_config_dict
+from plot_utils_pisa import *
 
 
 def main(input_file):
     print("Plotting", input_file)
     input_file_name = os.path.basename(input_file)
-    with tb.open_file(input_file) as f:
+    output_file = os.path.splitext(input_file)[0] + ".pdf"
+    with tb.open_file(input_file) as f, PdfPages(output_file) as pdf:
         cfg = get_config_dict(f)
         chip_serial_number = cfg["configuration_in.chip.settings.chip_sn"]
-        # TODO
+        plt.figure(figsize=(6.4, 4.8))
+        plt.annotate(
+            split_long_text(f"{os.path.abspath(input_file)}\n"
+                            f"Chip {chip_serial_number}\n"
+                            f"Version {get_commit()}"),
+            (0.5, 0.5), ha='center', va='center')
+        plt.gca().set_axis_off()
+        pdf.savefig(); plt.clf()
 
 
 if __name__ == "__main__":
