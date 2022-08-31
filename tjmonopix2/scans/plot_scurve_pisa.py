@@ -2,6 +2,7 @@
 """Plots the results of scan_threshold (HistOcc and HistToT not required)."""
 import argparse
 import glob
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
