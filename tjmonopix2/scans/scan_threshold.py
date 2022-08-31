@@ -12,27 +12,31 @@ from tqdm import tqdm
 from plotting_scurves import Plotting
 
 scan_configuration = {
-    'start_column': 0,
-    'stop_column': 5,
+    'start_column': 225,
+    'stop_column': 226,
     'start_row': 0,
-    'stop_row': 512,
+    'stop_row': 1,
 
     'n_injections': 100,
-    'VCAL_HIGH': 150,
-    'VCAL_LOW_start': 140,
-    'VCAL_LOW_stop': 40,
-    'VCAL_LOW_step': -1
+    'VCAL_HIGH': 240,
+    'VCAL_LOW_start': 240,
+    'VCAL_LOW_stop': 239,
+    'VCAL_LOW_step': -10
 }
 
 register_overrides = {
-    "ITHR": 64,
-    "IBIAS": 50,
-    "ICASN": 0,
-    "VCASP": 93,
-    "VRESET": 143,
+    'ITHR': 64,
+    'IBIAS': 50,
+    'VRESET': 143,
+    'ICASN': 0,
+    'VCASP': 93,
     "VCASC": 228,
     "IDB": 100,
-    'ITUNE': 53
+    'ITUNE': 53,
+    'MON_EN_VH': 0,
+    'MON_EN_VL': 0,
+    'OVR_EN_VH': 0,
+    'OVR_EN_VL': 0,
 }
 
 
@@ -76,9 +80,9 @@ class ThresholdScan(ScanBase):
         with analysis.Analysis(raw_data_file=self.output_filename + '.h5', **self.configuration['bench']['analysis']) as a:
             a.analyze_data()
 
-        if self.configuration['bench']['analysis']['create_pdf']:
-            with Plotting(analyzed_data_file=a.analyzed_data_file) as p:
-                p.create_standard_plots()
+        # if self.configuration['bench']['analysis']['create_pdf']:
+        #     with Plotting(analyzed_data_file=a.analyzed_data_file) as p:
+        #         p.create_standard_plots()
 
 
 if __name__ == "__main__":
