@@ -13,7 +13,6 @@ from plot_utils_pisa import *
 
 def main(input_file):
     print("Plotting", input_file)
-    input_file_name = os.path.basename(input_file)
     output_file = os.path.splitext(input_file)[0] + ".pdf"
     with tb.open_file(input_file) as f, PdfPages(output_file) as pdf, tqdm(total=5) as bar:
         cfg = get_config_dict(f)
