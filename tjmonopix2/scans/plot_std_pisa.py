@@ -28,36 +28,47 @@ def main(input_file, overwrite=False):
         counts2d, edges, _ = np.histogram2d(hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]])
         with np.errstate(all='ignore'):
             tot = (hits["te"] - hits["le"]) & 0x7f
+        fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
 
-        bins = 100 if counts2d.max() > 200 else max(counts2d.max(), 5)
-        plt.hist(counts2d.reshape(-1), bins=bins, range=[0.5, max(counts2d.max(), 5) + 0.5])
+        # Histogram of hits per pixel
+        m = np.quantile(counts2d[counts2d > 0], 0.99) * 1.2 if np.any(counts2d > 0) else 1
+        bins = 100 if m > 200 else int(max(m, 5))
+        for fc, lc, name in FRONTENDS:
+            plt.hist(counts2d[fc:lc+1,:].reshape(-1), label=name, histtype='step',
+                     bins=bins, range=[0.5, max(m, 5) + 0.5])
         plt.title("Hits per pixel")
         plt.xlabel("Number of hits")
         plt.ylabel("Pixels / bin")
-        plt.yscale('log')
         plt.grid(axis='y')
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        plt.legend()
         pdf.savefig(); plt.clf()
 
-        plt.hist(tot, bins=128, range=[-0.5, 127.5])
+        # Histogram of ToT
+        for (_, _, name), mask in zip(FRONTENDS, fe_masks):
+            plt.hist(tot[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("ToT")
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")
-        plt.yscale('log')
         plt.grid(axis='y')
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        plt.legend()
         pdf.savefig(); plt.clf()
 
-        plt.hist2d(hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]],
-                   rasterized=True)  # Necessary for quick save and view in PDF
+        # Hit map
+        plt.pcolormesh(edges, edges, counts2d.transpose(), vmin=0, vmax=m,
+                       rasterized=True)  # Necessary for quick save and view in PDF
         plt.title("Hit map")
         plt.xlabel("Col")
         plt.ylabel("Row")
-        cb = plt.colorbar()
+        cb = integer_ticks_colorbar()
         cb.set_label("Hits / pixel")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         pdf.savefig(); plt.clf()
 
-        tot2d, _, _ = np.histogram2d(
-            hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]],
-            weights=tot)
+        # Map of the average ToT
+        tot2d, _, _ = np.histogram2d(hits["col"], hits["row"], bins=[512, 512],
+                                     range=[[0, 512], [0, 512]], weights=tot)
         with np.errstate(all='ignore'):
             totavg = tot2d /counts2d
         plt.pcolormesh(edges, edges, totavg.transpose(), vmin=-0.5, vmax=127.5,
@@ -65,8 +76,9 @@ def main(input_file, overwrite=False):
         plt.title("Average ToT map")
         plt.xlabel("Col")
         plt.ylabel("Row")
-        cb = plt.colorbar()
+        cb = integer_ticks_colorbar()
         cb.set_label("ToT [25 ns]")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         pdf.savefig(); plt.clf()
 
         plt.close()

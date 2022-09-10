@@ -3,9 +3,19 @@ import re
 import os
 import subprocess
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import tables as tb
 
-__all__ = ['get_config_dict', 'split_long_text', 'get_commit', 'draw_summary']
+__all__ = [
+    'FRONTENDS', 'get_config_dict', 'split_long_text', 'get_commit',
+    'draw_summary', 'set_integer_ticks', 'integer_ticks_colorbar']
+
+FRONTENDS = [
+    # First col (included), last col (included), name
+    (0, 223, 'Normal'),
+    (224, 447, 'Cascode'),
+    (448, 479, 'HV Casc.'),
+    (480, 511, 'HV')]
 
 
 def get_config_dict(h5_file):
@@ -69,6 +79,7 @@ def split_long_text(s, max_chars=80):
 
 
 def get_commit():
+    """Returns the hash of the current commit of the tj-monopix2-daq repo."""
     cwd = os.path.dirname(__file__)
     cp = subprocess.run(['git', 'log', '--pretty=format:%h', '-n', '1'],
                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -77,6 +88,7 @@ def get_commit():
 
 
 def draw_summary(input_file_path, cfg):
+    """Draws the summary 'plot' with the scan and chip info."""
     plt.annotate(
         split_long_text(
             f"{os.path.abspath(input_file_path)}\n"
@@ -90,3 +102,19 @@ def draw_summary(input_file_path, cfg):
                     "VCASC", "VCLIP", "VL", "VH", "ICOMP", "IDEL", "IRAM"])
         ), (0.5, 0.5), ha='center', va='center')
     plt.gca().set_axis_off()
+
+
+def set_integer_ticks(*axis):
+    """Makes an axis only use integer numbers for ticks.
+
+    Examples:
+        set_integer_ticks(plt.gca().xaxis)
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+    """
+    for a in axis:
+        a.set_major_locator(MaxNLocator(integer=True))
+
+
+def integer_ticks_colorbar(*args, **kwargs):
+    """Like plt.colorbar(), but ensures the ticks are integers."""
+    return plt.colorbar(*args, ticks=MaxNLocator(integer=True), **kwargs)
