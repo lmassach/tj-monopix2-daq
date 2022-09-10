@@ -64,6 +64,7 @@ def main(input_file, overwrite=False):
         cb = integer_ticks_colorbar()
         cb.set_label("Hits / pixel")
         set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        frontend_names_on_top()
         pdf.savefig(); plt.clf()
 
         # Map of the average ToT
@@ -79,6 +80,7 @@ def main(input_file, overwrite=False):
         cb = integer_ticks_colorbar()
         cb.set_label("ToT [25 ns]")
         set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        frontend_names_on_top()
         pdf.savefig(); plt.clf()
 
         plt.close()

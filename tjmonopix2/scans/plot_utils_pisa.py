@@ -8,7 +8,8 @@ import tables as tb
 
 __all__ = [
     'FRONTENDS', 'get_config_dict', 'split_long_text', 'get_commit',
-    'draw_summary', 'set_integer_ticks', 'integer_ticks_colorbar']
+    'draw_summary', 'set_integer_ticks', 'integer_ticks_colorbar',
+    'frontend_names_on_top']
 
 FRONTENDS = [
     # First col (included), last col (included), name
@@ -118,3 +119,15 @@ def set_integer_ticks(*axis):
 def integer_ticks_colorbar(*args, **kwargs):
     """Like plt.colorbar(), but ensures the ticks are integers."""
     return plt.colorbar(*args, ticks=MaxNLocator(integer=True), **kwargs)
+
+
+def frontend_names_on_top(ax=None):
+    """Writes the names of the frontends on the top of the plot."""
+    if ax is None:
+        ax = plt.gca()
+    ax2 = ax.twiny()
+    ax2.set_xlim(*ax.get_xlim())
+    ax2.set_xticks([0, 224, 448, 480, 512])
+    ax2.set_xticklabels('')
+    ax2.set_xticks([112, 336, 464, 496], minor=True)
+    ax2.set_xticklabels(['Normal', 'Cascode', 'HV$_C$', 'HV'], minor=True)
