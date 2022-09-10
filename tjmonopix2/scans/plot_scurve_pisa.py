@@ -19,14 +19,9 @@ def main(input_file, overwrite=False):
     print("Plotting", input_file)
     with tb.open_file(input_file) as f, PdfPages(output_file) as pdf:
         cfg = get_config_dict(f)
-        chip_serial_number = cfg["configuration_in.chip.settings.chip_sn"]
         plt.figure(figsize=(6.4, 4.8))
-        plt.annotate(
-            split_long_text(f"{os.path.abspath(input_file)}\n"
-                            f"Chip {chip_serial_number}\n"
-                            f"Version {get_commit()}"),
-            (0.5, 0.5), ha='center', va='center')
-        plt.gca().set_axis_off()
+
+        draw_summary(input_file, cfg)
         pdf.savefig(); plt.clf()
 
         # Load hits

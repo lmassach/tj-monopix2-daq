@@ -2,9 +2,10 @@
 import re
 import os
 import subprocess
+import matplotlib.pyplot as plt
 import tables as tb
 
-__all__ = ['get_config_dict', 'split_long_text', 'get_commit']
+__all__ = ['get_config_dict', 'split_long_text', 'get_commit', 'draw_summary']
 
 
 def get_config_dict(h5_file):
@@ -73,3 +74,19 @@ def get_commit():
                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                         encoding='utf8', cwd=cwd)
     return cp.stdout
+
+
+def draw_summary(input_file_path, cfg):
+    plt.annotate(
+        split_long_text(
+            f"{os.path.abspath(input_file_path)}\n"
+            f"Chip =  {cfg.get('configuration_in.chip.settings.chip_sn')}\n"
+            f"Script version = {get_commit()}\n\n"
+            f"{cfg.get('configuration_in.scan.run_config.scan_id')}\n"
+            + ", ".join(
+                f"{r} = {cfg.get(f'configuration_out.chip.registers.{r}')}"
+                for r in [
+                    "IBIAS", "ITHR", "ICASN", "IDB", "ITUNE", "VRESET", "VCASP",
+                    "VCASC", "VCLIP", "VL", "VH", "ICOMP", "IDEL", "IRAM"])
+        ), (0.5, 0.5), ha='center', va='center')
+    plt.gca().set_axis_off()
