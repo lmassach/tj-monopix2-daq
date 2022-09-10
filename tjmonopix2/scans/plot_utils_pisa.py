@@ -126,8 +126,17 @@ def frontend_names_on_top(ax=None):
     if ax is None:
         ax = plt.gca()
     ax2 = ax.twiny()
-    ax2.set_xlim(*ax.get_xlim())
-    ax2.set_xticks([0, 224, 448, 480, 512])
+    xl, xh = ax.get_xlim()
+    ax2.set_xlim(xl, xh)
+    ax2.set_xticks([x for x in [0, 224, 448, 480, 512] if xl <= x <= xh])
     ax2.set_xticklabels('')
-    ax2.set_xticks([112, 336, 464, 496], minor=True)
-    ax2.set_xticklabels(['Normal', 'Cascode', 'HV$_C$', 'HV'], minor=True)
+    lx, lt = [], []
+    for fc, lc, name in FRONTENDS:
+        if fc > xh or lc < xl:
+            continue
+        fc = max(xl, fc)
+        lc = min(xh, lc)
+        lx.append((fc + lc) / 2)
+        lt.append(name.replace(" Casc.", "$_C$"))
+    ax2.set_xticks(lx, minor=True)
+    ax2.set_xticklabels(lt, minor=True)

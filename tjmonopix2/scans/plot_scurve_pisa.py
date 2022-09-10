@@ -2,6 +2,7 @@
 """Plots the results of scan_threshold (HistOcc and HistToT not required)."""
 import argparse
 import glob
+from itertools import chain
 import os
 import traceback
 from matplotlib.backends.backend_pdf import PdfPages
@@ -28,6 +29,8 @@ def main(input_file, overwrite=False):
         hits = f.root.Dut[:]
         with np.errstate(all='ignore'):
             tot = (hits["te"] - hits["le"]) & 0x7f
+        fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
+
         # Load information on injected charge and steps taken
         sp = f.root.configuration_in.scan.scan_params[:]
         scan_params = np.zeros(sp["scan_param_id"].max() + 1, dtype=sp.dtype)
@@ -64,32 +67,44 @@ def main(input_file, overwrite=False):
             range=[[col_start, col_stop], [row_start, row_stop], charge_dac_range])
         occupancy /= n_injections
 
+        # S-Curve as 2D histogram
         occupancy_charges = occupancy_edges[2].astype(np.float32)
         occupancy_charges = (occupancy_charges[:-1] + occupancy_charges[1:]) / 2
         occupancy_charges = np.tile(occupancy_charges, (col_n, row_n, 1))
-        plt.hist2d(occupancy_charges.reshape(-1), occupancy.reshape(-1),
-                   bins=[charge_dac_bins, 150], range=[charge_dac_range, [0, 1.5]],
-                   cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
-        plt.title(subtitle)
-        plt.suptitle(subtitle)
-        plt.suptitle("S-Curve")
-        plt.xlabel("Injected charge [DAC]")
-        plt.ylabel("Occupancy")
-        cb = plt.colorbar()
-        cb.set_label("Pixels / bin")
-        pdf.savefig(); plt.clf()
+        for fc, lc, name in chain([(0, 511, 'All FEs')], FRONTENDS):
+            if fc >= col_stop or lc < col_start:
+                continue
+            fc = max(0, fc - col_start)
+            lc = min(col_n - 1, lc - col_start)
+            plt.hist2d(occupancy_charges[fc:lc+1,:,:].reshape(-1),
+                       occupancy[fc:lc+1,:,:].reshape(-1),
+                       bins=[charge_dac_bins, 150], range=[charge_dac_range, [0, 1.5]],
+                       cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
+            plt.title(subtitle)
+            plt.suptitle(f"S-Curve ({name})")
+            plt.xlabel("Injected charge [DAC]")
+            plt.ylabel("Occupancy")
+            set_integer_ticks(plt.gca().xaxis)
+            cb = integer_ticks_colorbar()
+            cb.set_label("Pixels / bin")
+            pdf.savefig(); plt.clf()
 
+        # ToT vs injected charge as 2D histogram
         m = 32 if tot.max() <= 32 else 128
-        plt.hist2d(charge_dac, tot, bins=[250, m],
-                   range=[[0, 250], [-0.5, m + 0.5]],
-                   cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
-        plt.title(subtitle)
-        plt.suptitle("ToT curve")
-        plt.xlabel("Injected charge [DAC]")
-        plt.ylabel("ToT [25 ns]")
-        cb = plt.colorbar()
-        cb.set_label("Hits / bin")
-        pdf.savefig(); plt.clf()
+        for (fc, lc, name), mask in zip(chain([(0, 511, 'All FEs')], FRONTENDS), chain([slice(-1)], fe_masks)):
+            if fc >= col_stop or lc < col_start:
+                continue
+            plt.hist2d(charge_dac[mask], tot[mask], bins=[250, m],
+                       range=[[-0.5, 249.5], [-0.5, m + 0.5]],
+                       cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
+            plt.title(subtitle)
+            plt.suptitle(f"ToT curve ({name})")
+            plt.xlabel("Injected charge [DAC]")
+            plt.ylabel("ToT [25 ns]")
+            set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+            cb = integer_ticks_colorbar()
+            cb.set_label("Hits / bin")
+            pdf.savefig(); plt.clf()
 
         # Compute the threshold for each pixel as the weighted average
         # of the injected charge, where the weights are given by the
@@ -100,44 +115,64 @@ def main(input_file, overwrite=False):
         threshold_DAC = np.average(occupancy_charges, axis=2, weights=w)
         m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
         m2 = int(min(charge_dac_range[1], threshold_DAC.max() + 2))
-        plt.hist(threshold_DAC.reshape(-1), bins=m2-m1, range=[m1, m2])
-        plt.title(subtitle)
-        plt.suptitle("Threshold distribution")
-        plt.xlabel("Threshold [DAC]")
-        plt.ylabel("Pixels / bin")
-        plt.grid(axis='y')
-        pdf.savefig(); plt.clf()
+        for fc, lc, name in chain([(0, 511, 'All FEs')], FRONTENDS):
+            if fc >= col_stop or lc < col_start:
+                continue
+            fc = max(0, fc - col_start)
+            lc = min(col_n - 1, lc - col_start)
+            plt.hist(threshold_DAC[fc:lc+1,:].reshape(-1), bins=m2-m1, range=[m1, m2])
+            plt.title(subtitle)
+            plt.suptitle(f"Threshold distribution ({name})")
+            plt.xlabel("Threshold [DAC]")
+            plt.ylabel("Pixels / bin")
+            set_integer_ticks(plt.gca().yaxis)
+            plt.grid(axis='y')
+            pdf.savefig(); plt.clf()
 
+        # Threshold map
+        plt.axes((0.125, 0.11, 0.775, 0.72))
         plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(),
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Threshold map")
         plt.xlabel("Column")
         plt.ylabel("Row")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         cb = plt.colorbar()
         cb.set_label("Threshold [DAC]")
+        frontend_names_on_top()
         pdf.savefig(); plt.clf()
 
         # Compute the noise (the width of the up-slope of the s-curve)
         # as a variance with the weights above
         noise_DAC = np.sqrt(np.average((occupancy_charges - np.expand_dims(threshold_DAC, -1))**2, axis=2, weights=w))
         m = int(np.ceil(noise_DAC.max(initial=0, where=np.isfinite(noise_DAC)))) + 1
-        plt.hist(noise_DAC.reshape(-1), bins=min(2*m, 100), range=[0, m])
-        plt.title(subtitle)
-        plt.suptitle("Noise (width of s-curve slope) distribution")
-        plt.xlabel("Noise [DAC]")
-        plt.ylabel("Pixels / bin")
-        plt.grid(axis='y')
-        pdf.savefig(); plt.clf()
+        for fc, lc, name in chain([(0, 511, 'All FEs')], FRONTENDS):
+            if fc >= col_stop or lc < col_start:
+                continue
+            fc = max(0, fc - col_start)
+            lc = min(col_n - 1, lc - col_start)
+            plt.hist(noise_DAC[fc:lc+1,:].reshape(-1), bins=min(2*m, 100), range=[0, m])
+            plt.title(subtitle)
+            plt.suptitle(f"Noise (width of s-curve slope) distribution ({name})")
+            plt.xlabel("Noise [DAC]")
+            plt.ylabel("Pixels / bin")
+            set_integer_ticks(plt.gca().yaxis)
+            plt.grid(axis='y')
+            pdf.savefig(); plt.clf()
 
+        # Noise map
+        plt.axes((0.125, 0.11, 0.775, 0.72))
         plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], noise_DAC.transpose(),
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Noise (width of s-curve slope) map")
         plt.xlabel("Column")
         plt.ylabel("Row")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         cb = plt.colorbar()
         cb.set_label("Noise [DAC]")
+        frontend_names_on_top()
         pdf.savefig(); plt.clf()
 
         plt.close()
