@@ -6,11 +6,22 @@ from itertools import chain
 import os
 import traceback
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
 from tqdm import tqdm
 from plot_utils_pisa import *
+
+COLOR_GRADIENTS = [
+    # Blue fading to white
+    [((0x1f + c*0xff/100) / 512, (0x77 + c*0xff/100) / 512, (0xb4 + c*0xff/100) / 512) for c in range(64)],
+    # Orange fading to white
+    [((0xff + c*0xff/100) / 512, (0x7f + c*0xff/100) / 512, (0x0e + c*0xff/100) / 512) for c in range(64)],
+    # Green fading to white
+    [((0x2c + c*0xff/100) / 512, (0xa0 + c*0xff/100) / 512, (0x2c + c*0xff/100) / 512) for c in range(64)],
+    # Red fading to white
+    [((0xd6 + c*0xff/100) / 512, (0x27 + c*0xff/100) / 512, (0x28 + c*0xff/100) / 512) for c in range(64)]]
 
 
 def main(input_file, overwrite=False):
@@ -172,6 +183,59 @@ def main(input_file, overwrite=False):
         set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         cb = plt.colorbar()
         cb.set_label("Noise [DAC]")
+        frontend_names_on_top()
+        pdf.savefig(); plt.clf()
+
+        # Time since previous hit vs ToT
+        m = 32 if tot.max() <= 32 else 128
+        for (fc, lc, name), mask in zip(chain([(0, 511, 'All FEs')], FRONTENDS), chain([slice(-1)], fe_masks)):
+            if fc >= col_stop or lc < col_start:
+                continue
+            plt.hist2d(tot[mask][1:], np.diff(hits["timestamp"][mask]) / 640.,
+                       bins=[m, 479], range=[[-0.5, m + 0.5], [25e-3, 12]],
+                       cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
+            plt.title(subtitle)
+            plt.suptitle(f"Time between hits ({name})")
+            plt.xlabel("ToT [25 ns]")
+            plt.ylabel("$\\Delta t_{{token}}$ from previous hit [μs]")
+            set_integer_ticks(plt.gca().xaxis)
+            cb = integer_ticks_colorbar()
+            cb.set_label("Hits / bin")
+            pdf.savefig(); plt.clf()
+
+        # Scan pattern
+        # Find the index of the first hit on each pixel with an inj.
+        # charge chosen way above threshold
+        cols = np.tile(np.arange(col_start, col_stop), (row_n, 1))
+        rows = np.tile(np.arange(row_start, row_stop).reshape(-1, 1), (1, col_n))
+        tmp = hits[charge_dac == int(threshold_DAC.max()) + 5]
+        first_hit_index = np.argmax(
+            (tmp["col"].reshape((-1, 1, 1)) == cols.reshape(1, row_n, col_n))
+            & (tmp["row"].reshape((-1, 1, 1)) == rows.reshape(1, row_n, col_n)),
+            axis=0)
+        del cols, rows
+        fts = tmp["timestamp"][first_hit_index].astype(np.int64)  # In 1/(640 MHz) units
+        del tmp
+        fts -= fts.min()  # Time wrt first hit
+        # Convert to units of minimum interval between different pixels (8.75 μs * n_injections)
+        fts //= 1400 * 4 * n_injections  # Integer type => round to nearest smaller or equal integer
+        # Convert to sequential values
+        _, fts_unique = np.unique(fts, return_inverse=True)
+        fts_unique = fts_unique.reshape(fts.shape)
+        del fts
+        plt.axes((0.125, 0.11, 0.775, 0.72))
+        cm = ListedColormap(sum(COLOR_GRADIENTS[:min(row_n, 4)], []))
+        plt.pcolormesh(
+            np.arange(col_start, col_stop+1), np.arange(row_start, row_stop+1),
+            fts_unique, cmap=cm,
+            rasterized=True)  # Necessary for quick save and view in PDF
+        plt.title(subtitle)
+        plt.suptitle(f"Scan pattern (pixels injected at the same time)")
+        plt.xlabel("Column")
+        plt.ylabel("Row")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        cb = integer_ticks_colorbar()
+        cb.set_label("Same value = injected together")
         frontend_names_on_top()
         pdf.savefig(); plt.clf()
 
