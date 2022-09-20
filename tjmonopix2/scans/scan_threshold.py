@@ -12,28 +12,28 @@ from tqdm import tqdm
 from plotting_scurves import Plotting
 
 scan_configuration = {
-    'start_column': 5,
-    'stop_column': 10,
-    #'start_row': 507,
-    'start_row': 212,
+    'start_column': 223,
+    'stop_column': 225,
+    'start_row': 0,
     'stop_row': 512,
 
     'n_injections': 100,
-    'VCAL_HIGH': 200,
-    'VCAL_LOW_start': 199,
+    'VCAL_HIGH': 140,
+    'VCAL_LOW_start': 139,
     'VCAL_LOW_stop': 1,
     'VCAL_LOW_step': -1
 }
 
 register_overrides = {
-    'ITHR': 64, # Default 64
-    'IBIAS': 50, # Default 50
-    'VRESET': 143, #Default 143
-    'ICASN': 0, #Default 0
-    'VCASP': 93, #Default 93
-    "VCASC": 228,  # Default 228
+    'ITHR': 6,  # Default 64
+    'IBIAS': 50,  # Default 50
+    'VRESET': 143,  # Default 143
+    'ICASN': 0,  # Default 0
+    'VCASP': 93,  # Default 93
+    "VCASC": 190,  # Default 228
     "IDB": 100,  # Default 100
     'ITUNE': 53,  # Default 53
+    # Enable VL and VH measurement and override
     # 'MON_EN_VH': 0,
     # 'MON_EN_VL': 0,
     # 'OVR_EN_VH': 0,

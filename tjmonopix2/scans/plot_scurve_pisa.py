@@ -24,6 +24,11 @@ COLOR_GRADIENTS = [
     [((0xd6 + c*0xff/100) / 512, (0x27 + c*0xff/100) / 512, (0x28 + c*0xff/100) / 512) for c in range(64)]]
 
 
+def average(a, axis=None, weights=1, invalid=np.NaN):
+    """Like np.average, but returns `invalid` instead of crashing if the sum of weights is zero."""
+    return np.nan_to_num(np.sum(a * weights, axis=axis).astype(float) / np.sum(weights, axis=axis).astype(float), nan=invalid)
+
+
 def main(input_file, overwrite=False):
     output_file = os.path.splitext(input_file)[0] + "_scurve.pdf"
     if os.path.isfile(output_file) and not overwrite:
@@ -123,22 +128,23 @@ def main(input_file, overwrite=False):
         # weight 0, and anything in between is linearly interpolated
         # Assuming the shape is an erf, this estimator is consistent
         w = np.maximum(0, 0.5 - np.abs(occupancy - 0.5))
-        threshold_DAC = np.average(occupancy_charges, axis=2, weights=w)
+        threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
         m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
         m2 = int(min(charge_dac_range[1], threshold_DAC.max() + 2))
-        for fc, lc, name in chain([(0, 511, 'All FEs')], FRONTENDS):
+        for fc, lc, name in FRONTENDS:
             if fc >= col_stop or lc < col_start:
                 continue
             fc = max(0, fc - col_start)
             lc = min(col_n - 1, lc - col_start)
-            plt.hist(threshold_DAC[fc:lc+1,:].reshape(-1), bins=m2-m1, range=[m1, m2])
-            plt.title(subtitle)
-            plt.suptitle(f"Threshold distribution ({name})")
-            plt.xlabel("Threshold [DAC]")
-            plt.ylabel("Pixels / bin")
-            set_integer_ticks(plt.gca().yaxis)
-            plt.grid(axis='y')
-            pdf.savefig(); plt.clf()
+            plt.hist(threshold_DAC[fc:lc+1,:].reshape(-1), bins=m2-m1, range=[m1, m2], label=name, histtype='step')
+        plt.title(subtitle)
+        plt.suptitle(f"Threshold distribution ({name})")
+        plt.xlabel("Threshold [DAC]")
+        plt.ylabel("Pixels / bin")
+        set_integer_ticks(plt.gca().yaxis)
+        plt.legend()
+        plt.grid(axis='y')
+        pdf.savefig(); plt.clf()
 
         # Threshold map
         plt.axes((0.125, 0.11, 0.775, 0.72))
@@ -156,21 +162,22 @@ def main(input_file, overwrite=False):
 
         # Compute the noise (the width of the up-slope of the s-curve)
         # as a variance with the weights above
-        noise_DAC = np.sqrt(np.average((occupancy_charges - np.expand_dims(threshold_DAC, -1))**2, axis=2, weights=w))
+        noise_DAC = np.sqrt(average((occupancy_charges - np.expand_dims(threshold_DAC, -1))**2, axis=2, weights=w, invalid=0))
         m = int(np.ceil(noise_DAC.max(initial=0, where=np.isfinite(noise_DAC)))) + 1
-        for fc, lc, name in chain([(0, 511, 'All FEs')], FRONTENDS):
+        for fc, lc, name in FRONTENDS:
             if fc >= col_stop or lc < col_start:
                 continue
             fc = max(0, fc - col_start)
             lc = min(col_n - 1, lc - col_start)
-            plt.hist(noise_DAC[fc:lc+1,:].reshape(-1), bins=min(2*m, 100), range=[0, m])
-            plt.title(subtitle)
-            plt.suptitle(f"Noise (width of s-curve slope) distribution ({name})")
-            plt.xlabel("Noise [DAC]")
-            plt.ylabel("Pixels / bin")
-            set_integer_ticks(plt.gca().yaxis)
-            plt.grid(axis='y')
-            pdf.savefig(); plt.clf()
+            plt.hist(noise_DAC[fc:lc+1,:].reshape(-1), bins=min(2*m, 100), range=[0, m], label=name, histtype='step')
+        plt.title(subtitle)
+        plt.suptitle(f"Noise (width of s-curve slope) distribution ({name})")
+        plt.xlabel("Noise [DAC]")
+        plt.ylabel("Pixels / bin")
+        set_integer_ticks(plt.gca().yaxis)
+        plt.grid(axis='y')
+        plt.legend()
+        pdf.savefig(); plt.clf()
 
         # Noise map
         plt.axes((0.125, 0.11, 0.775, 0.72))
@@ -258,6 +265,7 @@ if __name__ == "__main__":
             files.extend(glob.glob(pattern, recursive=True))
     else:
         files.extend(glob.glob("output_data/module_0/chip_0/*_threshold_scan_interpreted.h5"))
+    files.sort()
 
     for fp in tqdm(files):
         try:

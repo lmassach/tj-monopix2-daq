@@ -101,6 +101,7 @@ if __name__ == "__main__":
             files.extend(glob.glob(pattern, recursive=True))
     else:
         files.extend(glob.glob("output_data/module_0/chip_0/*_interpreted.h5"))
+    files.sort()
 
     for fp in tqdm(files):
         try:
