@@ -12,24 +12,25 @@ from tqdm import tqdm
 from plotting_scurves import Plotting
 
 scan_configuration = {
-    'start_column': 225,
-    'stop_column': 230,
-    'start_row': 507,
+    'start_column': 5,
+    'stop_column': 10,
+    #'start_row': 507,
+    'start_row': 212,
     'stop_row': 512,
 
     'n_injections': 100,
-    'VCAL_HIGH': 140,
-    'VCAL_LOW_start': 139,
+    'VCAL_HIGH': 200,
+    'VCAL_LOW_start': 199,
     'VCAL_LOW_stop': 1,
     'VCAL_LOW_step': -1
 }
 
 register_overrides = {
-    'ITHR': 35,
-    'IBIAS': 50,
-    'VRESET': 143,
-    'ICASN': 0,
-    'VCASP': 93,
+    'ITHR': 64, # Default 64
+    'IBIAS': 50, # Default 50
+    'VRESET': 143, #Default 143
+    'ICASN': 0, #Default 0
+    'VCASP': 93, #Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
     'ITUNE': 53,  # Default 53
@@ -55,7 +56,8 @@ class ThresholdScan(ScanBase):
     def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, **_):
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
-        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100
+        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100  # TDAC=4 for threshold tuning
+        #self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b111  # TDAC=7
 
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)

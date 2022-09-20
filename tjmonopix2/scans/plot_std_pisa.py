@@ -21,10 +21,17 @@ def main(input_file, overwrite=False):
         cfg = get_config_dict(f)
         chip_serial_number = cfg["configuration_in.chip.settings.chip_sn"]
         plt.figure(figsize=(6.4, 4.8))
+
+        s = ""
+        param = ["IBIAS","ITHR","ICASN","IDB","ITUNE","VRESET","VCASC","VCASP"]
+        for i in param:
+            value = cfg[f"configuration_in.chip.registers.{i}"]
+            s += f"{i} = {value}, "
         plt.annotate(
             split_long_text(f"{os.path.abspath(input_file)}\n"
                             f"Chip {chip_serial_number}\n"
-                            f"Version {get_commit()}"),
+                            f"Version {get_commit()}\n"
+                            f"Registers: {s[:-2]}"),
             (0.5, 0.5), ha='center', va='center')
         plt.gca().set_axis_off()
         pdf.savefig(); plt.clf()
@@ -34,7 +41,7 @@ def main(input_file, overwrite=False):
         with np.errstate(all='ignore'):
             tot = (hits["te"] - hits["le"]) & 0x7f
 
-        bins = 100 if counts2d.max() > 200 else max(counts2d.max(), 5)
+        bins = 100 if counts2d.max() > 200 else int(max(counts2d.max(), 5))
         plt.hist(counts2d.reshape(-1), bins=bins, range=[0.5, max(counts2d.max(), 5) + 0.5])
         plt.title("Hits per pixel")
         plt.xlabel("Number of hits")
@@ -47,7 +54,7 @@ def main(input_file, overwrite=False):
         plt.title("ToT")
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")
-        plt.yscale('log')
+        #plt.yscale('log')
         plt.grid(axis='y')
         pdf.savefig(); plt.clf()
 

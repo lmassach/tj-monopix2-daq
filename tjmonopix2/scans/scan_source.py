@@ -20,13 +20,13 @@ scan_configuration = {
 }
 
 register_overrides = {
-    'scan_time' : 60,  # seconds
-    'ITHR': 64,
+    'scan_time' : 20,  # seconds
+    'ITHR': 30,
     'IBIAS': 50,
     'VRESET': 143,
     'ICASN': 0,
     'VCASP': 93,
-    'IDB': 250,
+    'IDB': 100,
     'MON_EN_IDB': 1
 }
 
@@ -81,8 +81,8 @@ class SourceScan(ScanBase):
         self.hist_tot = 0
         with analysis.Analysis(raw_data_file=self.output_filename + '.h5', **self.configuration['bench']['analysis']) as a:
             a.analyze_data()
-            self.hist_occ = a.hist_occ
-            self.hist_tot = a.hist_tot
+            #self.hist_occ = a.hist_occ
+            #self.hist_tot = a.hist_tot
 
 
 if __name__ == "__main__":
