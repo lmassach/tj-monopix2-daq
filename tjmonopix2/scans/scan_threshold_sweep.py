@@ -6,40 +6,46 @@
 #
 
 from scan_threshold import ThresholdScan
+import datetime
 
 
 scan_configuration = {
-    'start_column': 482,
-    'stop_column': 483,
-    'start_row': 0,
+    'start_column': 225,
+    'stop_column': 230,
+    'start_row': 472,
     'stop_row': 512,
 
     'n_injections': 100,
-    'VCAL_HIGH': 150,
-    'VCAL_LOW_start': 130,
-    'VCAL_LOW_stop': 90,
-    'VCAL_LOW_step': -2
+    'VCAL_HIGH': 140,
+    'VCAL_LOW_start': 139,
+    'VCAL_LOW_stop': 1,
+    'VCAL_LOW_step': -1
 }
 
 default_register_overrides = {
-    "ITHR": 30,
-    "IBIAS": 60,
-    "ICASN": 8,
-    "VCASP": 40,
-    "VRESET": 100,
-    "VCASC": 150,
+    "ITHR": 20,
+    "IBIAS": 50,
+    "ICASN": 0,
+    "VCASP": 93,
+    "VRESET": 143,
+    "VCASC": 228,
+    "IDB": 100,
+    "ITUNE": 53
 }
 
 sweeps = {  # REGISTER: (START, STOP, STEP)
-    'ITHR': (25, 75, 5),
-    'VRESET': (70, 255, 20),
-    'IBIAS': (20, 60, 5),
-    'VCASP': (100, 140, 5),
-    'ICASN': (0, 16, 1)
+    #'ITHR': (25, 75, 5),
+    #'VRESET': (70, 255, 20),
+    #'IBIAS': (20, 60, 5),
+    #'VCASP': (100, 140, 5),
+    #'ICASN': (0, 16, 1)
+    #'ITHR': (20, 41, 20),
+    'ICASN': (5, 16, 5)
 }
 
 if __name__ == "__main__":
-    with open("output_data/scan_threshold_sweep.txt", "a") as ofs:
+    date = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    with open(f"output_data/scan_threshold_sweep_{date}.txt", "a") as ofs:
         for reg, sweep_range in sweeps.items():
             print(f"!!! Sweeping over {reg} in range {sweep_range}")
             for i in range(*sweep_range):
