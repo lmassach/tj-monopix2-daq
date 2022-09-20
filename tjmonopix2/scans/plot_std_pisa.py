@@ -19,57 +19,57 @@ def main(input_file, overwrite=False):
     print("Plotting", input_file)
     with tb.open_file(input_file) as f, PdfPages(output_file) as pdf:
         cfg = get_config_dict(f)
-        chip_serial_number = cfg["configuration_in.chip.settings.chip_sn"]
         plt.figure(figsize=(6.4, 4.8))
 
-        s = ""
-        param = ["IBIAS","ITHR","ICASN","IDB","ITUNE","VRESET","VCASC","VCASP"]
-        for i in param:
-            value = cfg[f"configuration_in.chip.registers.{i}"]
-            s += f"{i} = {value}, "
-        plt.annotate(
-            split_long_text(f"{os.path.abspath(input_file)}\n"
-                            f"Chip {chip_serial_number}\n"
-                            f"Version {get_commit()}\n"
-                            f"Registers: {s[:-2]}"),
-            (0.5, 0.5), ha='center', va='center')
-        plt.gca().set_axis_off()
+        draw_summary(input_file, cfg)
         pdf.savefig(); plt.clf()
 
         hits = f.root.Dut[:]
         counts2d, edges, _ = np.histogram2d(hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]])
         with np.errstate(all='ignore'):
             tot = (hits["te"] - hits["le"]) & 0x7f
+        fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
 
-        bins = 100 if counts2d.max() > 200 else int(max(counts2d.max(), 5))
-        plt.hist(counts2d.reshape(-1), bins=bins, range=[0.5, max(counts2d.max(), 5) + 0.5])
+        # Histogram of hits per pixel
+        m = np.quantile(counts2d[counts2d > 0], 0.99) * 1.2 if np.any(counts2d > 0) else 1
+        bins = 100 if m > 200 else int(max(m, 5))
+        for fc, lc, name in FRONTENDS:
+            plt.hist(counts2d[fc:lc+1,:].reshape(-1), label=name, histtype='step',
+                     bins=bins, range=[0.5, max(m, 5) + 0.5])
         plt.title("Hits per pixel")
         plt.xlabel("Number of hits")
         plt.ylabel("Pixels / bin")
-        plt.yscale('log')
         plt.grid(axis='y')
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        plt.legend()
         pdf.savefig(); plt.clf()
 
-        plt.hist(tot, bins=128, range=[-0.5, 127.5])
+        # Histogram of ToT
+        for (_, _, name), mask in zip(FRONTENDS, fe_masks):
+            plt.hist(tot[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("ToT")
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")
-        #plt.yscale('log')
         plt.grid(axis='y')
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        plt.legend()
         pdf.savefig(); plt.clf()
 
-        plt.hist2d(hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]],
-                   rasterized=True)  # Necessary for quick save and view in PDF
+        # Hit map
+        plt.pcolormesh(edges, edges, counts2d.transpose(), vmin=0, vmax=m,
+                       rasterized=True)  # Necessary for quick save and view in PDF
         plt.title("Hit map")
         plt.xlabel("Col")
         plt.ylabel("Row")
-        cb = plt.colorbar()
+        cb = integer_ticks_colorbar()
         cb.set_label("Hits / pixel")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        frontend_names_on_top()
         pdf.savefig(); plt.clf()
 
-        tot2d, _, _ = np.histogram2d(
-            hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]],
-            weights=tot)
+        # Map of the average ToT
+        tot2d, _, _ = np.histogram2d(hits["col"], hits["row"], bins=[512, 512],
+                                     range=[[0, 512], [0, 512]], weights=tot)
         with np.errstate(all='ignore'):
             totavg = tot2d /counts2d
         plt.pcolormesh(edges, edges, totavg.transpose(), vmin=-0.5, vmax=127.5,
@@ -77,8 +77,10 @@ def main(input_file, overwrite=False):
         plt.title("Average ToT map")
         plt.xlabel("Col")
         plt.ylabel("Row")
-        cb = plt.colorbar()
+        cb = integer_ticks_colorbar()
         cb.set_label("ToT [25 ns]")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        frontend_names_on_top()
         pdf.savefig(); plt.clf()
 
         plt.close()
