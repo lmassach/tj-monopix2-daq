@@ -14,14 +14,14 @@ from tjmonopix2.analysis import analysis
 
 scan_configuration = {
     'start_column': 0,
-    'stop_column': 512,
+    'stop_column': 448,
     'start_row': 0,
     'stop_row': 512,
 }
 
 register_overrides = {
-    'scan_time' : 20,  # seconds
-    'ITHR': 30,
+    'scan_time': 60,  # seconds
+    'ITHR': 64,
     'IBIAS': 50,
     'VRESET': 143,
     'ICASN': 0,

@@ -194,6 +194,7 @@ def main(input_file, overwrite=False):
         # Compute the noise (the width of the up-slope of the s-curve)
         # as a variance with the weights above
         noise_DAC = np.sqrt(average((occupancy_charges - np.expand_dims(threshold_DAC, -1))**2, axis=2, weights=w, invalid=0))
+        del w
         m = int(np.ceil(noise_DAC.max(initial=0, where=np.isfinite(noise_DAC)))) + 1
         for i, (fc, lc, name) in enumerate(FRONTENDS):
             if fc >= col_stop or lc < col_start:
@@ -243,42 +244,6 @@ def main(input_file, overwrite=False):
             cb = integer_ticks_colorbar()
             cb.set_label("Hits / bin")
             pdf.savefig(); plt.clf()
-
-        # Scan pattern
-        # Find the index of the first hit on each pixel with an inj.
-        # charge chosen way above threshold
-        cols = np.tile(np.arange(col_start, col_stop), (row_n, 1))
-        rows = np.tile(np.arange(row_start, row_stop).reshape(-1, 1), (1, col_n))
-        tmp = hits[charge_dac == int(threshold_DAC.max()) + 5]
-        first_hit_index = np.argmax(
-            (tmp["col"].reshape((-1, 1, 1)) == cols.reshape(1, row_n, col_n))
-            & (tmp["row"].reshape((-1, 1, 1)) == rows.reshape(1, row_n, col_n)),
-            axis=0)
-        del cols, rows
-        fts = tmp["timestamp"][first_hit_index].astype(np.int64)  # In 1/(640 MHz) units
-        del tmp
-        fts -= fts.min()  # Time wrt first hit
-        # Convert to units of minimum interval between different pixels (8.75 μs * n_injections)
-        fts //= 1400 * 4 * n_injections  # Integer type => round to nearest smaller or equal integer
-        # Convert to sequential values
-        _, fts_unique = np.unique(fts, return_inverse=True)
-        fts_unique = fts_unique.reshape(fts.shape)
-        del fts
-        plt.axes((0.125, 0.11, 0.775, 0.72))
-        cm = ListedColormap(sum(COLOR_GRADIENTS[:min(row_n, 4)], []))
-        plt.pcolormesh(
-            np.arange(col_start, col_stop+1), np.arange(row_start, row_stop+1),
-            fts_unique, cmap=cm,
-            rasterized=True)  # Necessary for quick save and view in PDF
-        plt.title(subtitle)
-        plt.suptitle(f"Scan pattern (pixels injected at the same time)")
-        plt.xlabel("Column")
-        plt.ylabel("Row")
-        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
-        cb = integer_ticks_colorbar()
-        cb.set_label("Same value = injected together")
-        frontend_names_on_top()
-        pdf.savefig(); plt.clf()
 
         plt.close()
 
