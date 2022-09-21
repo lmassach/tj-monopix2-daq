@@ -25,6 +25,7 @@ COLOR_GRADIENTS = [
     [((0xd6 + c*0xff/100) / 512, (0x27 + c*0xff/100) / 512, (0x28 + c*0xff/100) / 512) for c in range(64)]]
 
 
+@np.errstate(divide='ignore')
 def average(a, axis=None, weights=1, invalid=np.NaN):
     """Like np.average, but returns `invalid` instead of crashing if the sum of weights is zero."""
     return np.nan_to_num(np.sum(a * weights, axis=axis).astype(float) / np.sum(weights, axis=axis).astype(float), nan=invalid)
@@ -153,9 +154,9 @@ def main(input_file, overwrite=False):
                 continue
             fc = max(0, fc - col_start)
             lc = min(col_n - 1, lc - col_start)
-            th_mean = ufloat(np.mean(threshold_DAC[fc:lc+1,:]),
-                             np.std(threshold_DAC[fc:lc+1,:], ddof=1))
-            plt.hist(threshold_DAC[fc:lc+1,:].reshape(-1), bins=m2-m1, range=[m1, m2],
+            th = threshold_DAC[fc:lc+1,:]
+            th_mean = ufloat(np.mean(th[th>0]), np.std(th[th>0], ddof=1))
+            plt.hist(th.reshape(-1), bins=m2-m1, range=[m1, m2],
                      label=f"{name} ${th_mean:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle("Threshold distribution")
@@ -189,9 +190,9 @@ def main(input_file, overwrite=False):
                 continue
             fc = max(0, fc - col_start)
             lc = min(col_n - 1, lc - col_start)
-            noise_mean = ufloat(np.mean(noise_DAC[fc:lc+1,:]),
-                                np.std(noise_DAC[fc:lc+1,:], ddof=1))
-            plt.hist(noise_DAC[fc:lc+1,:].reshape(-1), bins=min(20*m, 100), range=[0, m],
+            ns = noise_DAC[fc:lc+1,:]
+            noise_mean = ufloat(np.mean(ns[ns>0]), np.std(ns[ns>0], ddof=1))
+            plt.hist(ns.reshape(-1), bins=min(20*m, 100), range=[0, m],
                      label=f"{name} ${noise_mean:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle(f"Noise (width of s-curve slope) distribution")
