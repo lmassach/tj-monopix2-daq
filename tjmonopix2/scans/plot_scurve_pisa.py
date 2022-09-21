@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
 from tqdm import tqdm
+from uncertainties import ufloat
 from plot_utils_pisa import *
 
 COLOR_GRADIENTS = [
@@ -136,8 +137,10 @@ def main(input_file, overwrite=False):
                 continue
             fc = max(0, fc - col_start)
             lc = min(col_n - 1, lc - col_start)
+            th_mean = ufloat(np.mean(threshold_DAC[fc:lc+1,:]),
+                             np.std(threshold_DAC[fc:lc+1,:], ddof=1))
             plt.hist(threshold_DAC[fc:lc+1,:].reshape(-1), bins=m2-m1, range=[m1, m2],
-                     label=name, histtype='step', color=f"C{i}")
+                     label=f"{name} ${th_mean:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle("Threshold distribution")
         plt.xlabel("Threshold [DAC]")
@@ -170,8 +173,10 @@ def main(input_file, overwrite=False):
                 continue
             fc = max(0, fc - col_start)
             lc = min(col_n - 1, lc - col_start)
-            plt.hist(noise_DAC[fc:lc+1,:].reshape(-1), bins=min(2*m, 100), range=[0, m],
-                     label=name, histtype='step', color=f"C{i}")
+            noise_mean = ufloat(np.mean(noise_DAC[fc:lc+1,:]),
+                                np.std(noise_DAC[fc:lc+1,:], ddof=1))
+            plt.hist(noise_DAC[fc:lc+1,:].reshape(-1), bins=min(20*m, 100), range=[0, m],
+                     label=f"{name} ${noise_mean:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle(f"Noise (width of s-curve slope) distribution")
         plt.xlabel("Noise [DAC]")
