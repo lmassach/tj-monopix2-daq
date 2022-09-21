@@ -84,6 +84,22 @@ def main(input_file, overwrite=False):
             range=[[col_start, col_stop], [row_start, row_stop], charge_dac_range])
         occupancy /= n_injections
 
+        # Look for noisy pixels (>10% extra hits)
+        top_left = np.array([[col_start, row_start]])
+        noisy_indices = np.argwhere(np.any(occupancy > 1.1, axis=2))
+        noisy_list = noisy_indices + top_left
+        noisy_mask = ~np.isin(hits[["col", "row"]], np.core.records.fromarrays(noisy_list.transpose(), names='col, row', formats='i2, i2'))
+        plt.annotate(
+            split_long_text(
+                "Noisy pixels with >10% extra hits (col, row)\n"
+                + ", ".join(f"({a}, {b})" for a, b in noisy_list[:min(len(noisy_list), 30)])
+                + (", ..." if len(noisy_list) > 30 else "")
+                + f"\nTotal = {len(noisy_list)} ({len(noisy_list)/row_n/col_n:.1%})\n"
+                f"{1-np.count_nonzero(noisy_mask)/len(hits):.1%} of the hits get cut this way\n\n"
+            ), (0.5, 0.5), ha='center', va='center')
+        plt.gca().set_axis_off()
+        pdf.savefig(); plt.clf()
+
         # S-Curve as 2D histogram
         occupancy_charges = occupancy_edges[2].astype(np.float32)
         occupancy_charges = (occupancy_charges[:-1] + occupancy_charges[1:]) / 2
