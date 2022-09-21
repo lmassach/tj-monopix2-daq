@@ -31,6 +31,23 @@ def average(a, axis=None, weights=1, invalid=np.NaN):
     return np.nan_to_num(np.sum(a * weights, axis=axis).astype(float) / np.sum(weights, axis=axis).astype(float), nan=invalid)
 
 
+def groupwise(iterable, n):
+    """Returns items from the iterable in groups of n, i.e. groupwise('abcdef', 3) -> 'abc', 'def'."""
+    i = iter(iterable)
+    def get():
+        items = []
+        for _ in range(n):
+            try:
+                items.append(next(i))
+            except StopIteration:
+                break
+        return tuple(items)
+    r = get()
+    while len(r):
+        yield r
+        r = get()
+
+
 def main(input_file, overwrite=False):
     output_file = os.path.splitext(input_file)[0] + "_scurve.pdf"
     if os.path.isfile(output_file) and not overwrite:
@@ -85,19 +102,29 @@ def main(input_file, overwrite=False):
             range=[[col_start, col_stop], [row_start, row_stop], charge_dac_range])
         occupancy /= n_injections
 
-        # Look for noisy pixels (>10% extra hits)
+        # Look for the noisiest pixels
         top_left = np.array([[col_start, row_start]])
-        noisy_indices = np.argwhere(np.any(occupancy > 1.1, axis=2))
-        noisy_list = noisy_indices + top_left
-        noisy_mask = ~np.isin(hits[["col", "row"]], np.core.records.fromarrays(noisy_list.transpose(), names='col, row', formats='i2, i2'))
-        plt.annotate(
-            split_long_text(
-                "Noisy pixels with >10% extra hits (col, row)\n"
-                + ", ".join(f"({a}, {b})" for a, b in noisy_list[:min(len(noisy_list), 30)])
-                + (", ..." if len(noisy_list) > 30 else "")
-                + f"\nTotal = {len(noisy_list)} ({len(noisy_list)/row_n/col_n:.1%})\n"
-                f"{1-np.count_nonzero(noisy_mask)/len(hits):.1%} of the hits get cut this way\n\n"
-            ), (0.5, 0.5), ha='center', va='center')
+        max_occu = np.max(occupancy, axis=2)
+        mask = max_occu > 1.05  # Allow a few extra hits
+        noisy_list = np.argwhere(mask) + top_left
+        noisy_indices = np.nonzero(mask)
+        srt = np.argsort(-max_occu[noisy_indices])
+        noisy_indices = tuple(x[srt] for x in noisy_indices)
+        noisy_list = noisy_list[srt]
+        if len(noisy_list):
+            mi = min(len(noisy_list), 100)
+            tmp = "\n".join(
+                ",    ".join(f"({a}, {b}) = {float(c):.1f}" for (a, b), c in g)
+                for g in groupwise(zip(noisy_list[:mi], max_occu[noisy_indices[:mi]]), 4))
+            plt.annotate(
+                split_long_text(
+                    "Noisiest pixels (col, row) = occupancy$_{max}$\n"
+                    f"{tmp}"
+                    f'{", ..." if len(noisy_list) > mi else ""}'
+                    f"\nTotal = {len(noisy_list)} pixels ({len(noisy_list)/row_n/col_n:.1%})"
+                ), (0.5, 0.5), ha='center', va='center')
+        else:
+            plt.annotate("No noisy pixel found.", (0.5, 0.5), ha='center', va='center')
         plt.gca().set_axis_off()
         pdf.savefig(); plt.clf()
 
