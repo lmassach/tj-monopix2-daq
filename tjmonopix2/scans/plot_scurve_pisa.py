@@ -12,6 +12,7 @@ import numpy as np
 import tables as tb
 from tqdm import tqdm
 from uncertainties import ufloat
+import yaml
 from plot_utils_pisa import *
 
 COLOR_GRADIENTS = [
@@ -28,6 +29,15 @@ COLOR_GRADIENTS = [
 def average(a, axis=None, weights=1, invalid=np.NaN):
     """Like np.average, but returns `invalid` instead of crashing if the sum of weights is zero."""
     return np.nan_to_num(np.sum(a * weights, axis=axis).astype(float) / np.sum(weights, axis=axis).astype(float), nan=invalid)
+
+
+with open(os.path.join(os.path.dirname(__file__), "vcal_saturation.yaml")) as ifs:
+    VCAL_CORRECTIONS = yaml.safe_load(ifs)
+
+
+def correct_vcal(x):
+    """Takes VH or VL values as input, returns them corrected for the saturation."""
+    return np.interp(x, VCAL_CORRECTIONS['vcal_values_dac'], VCAL_CORRECTIONS['real_values_dac'])
 
 
 def main(input_file, overwrite=False):
@@ -58,8 +68,8 @@ def main(input_file, overwrite=False):
             else:
                 scan_params[i]["scan_param_id"] = i
         del sp
-        vh = scan_params["vcal_high"][hits["scan_param_id"]]
-        vl = scan_params["vcal_low"][hits["scan_param_id"]]
+        vh = correct_vcal(scan_params["vcal_high"][hits["scan_param_id"]])
+        vl = correct_vcal(scan_params["vcal_low"][hits["scan_param_id"]])
         del scan_params
         charge_dac = vh - vl
         n_injections = int(cfg["configuration_in.scan.scan_config.n_injections"])
@@ -68,10 +78,14 @@ def main(input_file, overwrite=False):
         stop_vl = int(cfg["configuration_in.scan.scan_config.VCAL_LOW_stop"])
         step_vl = int(cfg["configuration_in.scan.scan_config.VCAL_LOW_step"])
         charge_dac_values = [
-            the_vh - x for x in range(start_vl, stop_vl, step_vl)]
+            correct_vcal(the_vh) - correct_vcal(x) for x in range(start_vl, stop_vl, step_vl)]
         subtitle = f"VH = {the_vh}, VL = {start_vl}..{stop_vl} (step {step_vl})"
-        charge_dac_bins = len(charge_dac_values)
-        charge_dac_range = [min(charge_dac_values) - 0.5, max(charge_dac_values) + 0.5]
+        del the_vh, start_vl, stop_vl, step_vl  # Prevent usage of uncorrected values
+        charge_dac_bins = [charge_dac_values[0] - 0.5] \
+            + [(charge_dac_values[i] + charge_dac_values[i+1]) / 2
+               for i in range(len(charge_dac_values) - 1)] \
+            + [charge_dac_values[-1] + 0.5]
+        charge_dac_range = None
         # Count hits per pixel per injected charge value
         row_start = int(cfg["configuration_in.scan.scan_config.start_row"])
         row_stop = int(cfg["configuration_in.scan.scan_config.stop_row"])
@@ -99,7 +113,7 @@ def main(input_file, overwrite=False):
                        cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
             plt.title(subtitle)
             plt.suptitle(f"S-Curve ({name})")
-            plt.xlabel("Injected charge [DAC]")
+            plt.xlabel("True injected charge [DAC]")
             plt.ylabel("Occupancy")
             set_integer_ticks(plt.gca().xaxis)
             cb = integer_ticks_colorbar()
@@ -116,7 +130,7 @@ def main(input_file, overwrite=False):
                        cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
             plt.title(subtitle)
             plt.suptitle(f"ToT curve ({name})")
-            plt.xlabel("Injected charge [DAC]")
+            plt.xlabel("True injected charge [DAC]")
             plt.ylabel("ToT [25 ns]")
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
             cb = integer_ticks_colorbar()
@@ -130,8 +144,8 @@ def main(input_file, overwrite=False):
         # Assuming the shape is an erf, this estimator is consistent
         w = np.maximum(0, 0.5 - np.abs(occupancy - 0.5))
         threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
-        m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
-        m2 = int(min(charge_dac_range[1], threshold_DAC.max() + 2))
+        m1 = int(max(charge_dac_bins[0], threshold_DAC.min() - 2))
+        m2 = int(min(charge_dac_bins[-1], threshold_DAC.max() + 2))
         for i, (fc, lc, name) in enumerate(FRONTENDS):
             if fc >= col_stop or lc < col_start:
                 continue
@@ -143,7 +157,7 @@ def main(input_file, overwrite=False):
                      label=f"{name} ${th_mean:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle("Threshold distribution")
-        plt.xlabel("Threshold [DAC]")
+        plt.xlabel("True threshold [DAC]")
         plt.ylabel("Pixels / bin")
         set_integer_ticks(plt.gca().yaxis)
         plt.legend()
@@ -160,7 +174,7 @@ def main(input_file, overwrite=False):
         plt.ylabel("Row")
         set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         cb = plt.colorbar()
-        cb.set_label("Threshold [DAC]")
+        cb.set_label("True threshold [DAC]")
         frontend_names_on_top()
         pdf.savefig(); plt.clf()
 
@@ -179,7 +193,7 @@ def main(input_file, overwrite=False):
                      label=f"{name} ${noise_mean:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle(f"Noise (width of s-curve slope) distribution")
-        plt.xlabel("Noise [DAC]")
+        plt.xlabel("True noise [DAC]")
         plt.ylabel("Pixels / bin")
         set_integer_ticks(plt.gca().yaxis)
         plt.grid(axis='y')
@@ -196,7 +210,7 @@ def main(input_file, overwrite=False):
         plt.ylabel("Row")
         set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         cb = plt.colorbar()
-        cb.set_label("Noise [DAC]")
+        cb.set_label("True noise [DAC]")
         frontend_names_on_top()
         pdf.savefig(); plt.clf()
 
@@ -222,7 +236,7 @@ def main(input_file, overwrite=False):
         # charge chosen way above threshold
         cols = np.tile(np.arange(col_start, col_stop), (row_n, 1))
         rows = np.tile(np.arange(row_start, row_stop).reshape(-1, 1), (1, col_n))
-        tmp = hits[charge_dac == int(threshold_DAC.max()) + 5]
+        tmp = hits[charge_dac == next(x for x in charge_dac_values if x > threshold_DAC.max() + 5)]
         first_hit_index = np.argmax(
             (tmp["col"].reshape((-1, 1, 1)) == cols.reshape(1, row_n, col_n))
             & (tmp["row"].reshape((-1, 1, 1)) == rows.reshape(1, row_n, col_n)),
