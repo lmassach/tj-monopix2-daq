@@ -11,7 +11,7 @@ author = 'Christian Bespin'
 author_email = 'bespin@physik.uni-bonn.de'
 
 # Requirements
-install_requires = ['basil-daq>=3.0.0', 'coloredlogs', 'gitpython', 'numba', 'numpy', 'matplotlib', 'online_monitor', 'pyyaml', 'pyzmq', 'tables', 'tqdm', 'scipy', 'pandas']
+install_requires = ['basil-daq>=3.0.0', 'coloredlogs', 'gitpython', 'numba', 'numpy', 'matplotlib', 'online_monitor', 'pyyaml', 'pyzmq', 'tables', 'tqdm', 'scipy', 'pandas', 'uncertainties']
 
 setup(
     name='tjmonopix2',
