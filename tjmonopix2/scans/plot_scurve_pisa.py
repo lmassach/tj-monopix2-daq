@@ -25,6 +25,7 @@ COLOR_GRADIENTS = [
     [((0xd6 + c*0xff/100) / 512, (0x27 + c*0xff/100) / 512, (0x28 + c*0xff/100) / 512) for c in range(64)]]
 
 
+@np.errstate(divide='ignore')
 def average(a, axis=None, weights=1, invalid=np.NaN):
     """Like np.average, but returns `invalid` instead of crashing if the sum of weights is zero."""
     return np.nan_to_num(np.sum(a * weights, axis=axis).astype(float) / np.sum(weights, axis=axis).astype(float), nan=invalid)
@@ -44,9 +45,6 @@ def main(input_file, overwrite=False):
 
         # Load hits
         hits = f.root.Dut[:]
-        with np.errstate(all='ignore'):
-            tot = (hits["te"] - hits["le"]) & 0x7f
-        fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
 
         # Load information on injected charge and steps taken
         sp = f.root.configuration_in.scan.scan_params[:]
@@ -62,6 +60,7 @@ def main(input_file, overwrite=False):
         vl = scan_params["vcal_low"][hits["scan_param_id"]]
         del scan_params
         charge_dac = vh - vl
+        del vh, vl
         n_injections = int(cfg["configuration_in.scan.scan_config.n_injections"])
         the_vh = int(cfg["configuration_in.scan.scan_config.VCAL_HIGH"])
         start_vl = int(cfg["configuration_in.scan.scan_config.VCAL_LOW_start"])
@@ -69,7 +68,7 @@ def main(input_file, overwrite=False):
         step_vl = int(cfg["configuration_in.scan.scan_config.VCAL_LOW_step"])
         charge_dac_values = [
             the_vh - x for x in range(start_vl, stop_vl, step_vl)]
-        subtitle = f"VH = {the_vh}, VL = {start_vl}..{stop_vl} (step {step_vl})"
+        subtitle = f"VH = {the_vh}{'(!)' if the_vh > 140 else ''}, VL = {start_vl}..{stop_vl} (step {step_vl})"
         charge_dac_bins = len(charge_dac_values)
         charge_dac_range = [min(charge_dac_values) - 0.5, max(charge_dac_values) + 0.5]
         # Count hits per pixel per injected charge value
@@ -83,6 +82,37 @@ def main(input_file, overwrite=False):
             bins=[col_n, row_n, charge_dac_bins],
             range=[[col_start, col_stop], [row_start, row_stop], charge_dac_range])
         occupancy /= n_injections
+
+        # Look for noisy pixels (>10% extra hits, strict = any extra hit)
+        top_left = np.array([[col_start, row_start]])
+        # noisy_strict = np.argwhere(np.any(occupancy > 1, axis=2)) + top_left
+        # mask_strict = ~np.isin(hits[["col", "row"]], np.core.records.fromarrays(noisy_strict.transpose(), names='col, row', formats='i2, i2'))
+        noisy_indices = np.argwhere(np.any(occupancy > 1.1, axis=2))
+        noisy_list = noisy_indices + top_left
+        noisy_mask = ~np.isin(hits[["col", "row"]], np.core.records.fromarrays(noisy_list.transpose(), names='col, row', formats='i2, i2'))
+        plt.annotate(
+            split_long_text(
+                "Noisy pixels with >10% extra hits (col, row)\n"
+                + ", ".join(f"({a}, {b})" for a, b in noisy_list[:min(len(noisy_list), 30)])
+                + (", ..." if len(noisy_list) > 30 else "")
+                + f"\nTotal = {len(noisy_list)} ({len(noisy_list)/row_n/col_n:.1%})\n"
+                f"{1-np.count_nonzero(noisy_mask)/len(hits):.1%} of the hits get cut this way\n\n"
+                # f"Noisy pixels with any extra hit (col, row)\n"
+                # + ", ".join(f"({a}, {b})" for a, b in noisy_strict[:min(len(noisy_strict), 30)])
+                # + (", ..." if len(noisy_strict) > 30 else "")
+                # + f"\nTotal = {len(noisy_strict)} ({len(noisy_strict)/row_n/col_n:.1%})\n"
+                # f"{1-np.count_nonzero(mask_strict)/len(hits):.1%} of the hits get cut this way"
+            ), (0.5, 0.5), ha='center', va='center')
+        plt.gca().set_axis_off()
+        pdf.savefig(); plt.clf()
+
+        # Cut out noisy pixels
+        hits = hits[noisy_mask]
+        with np.errstate(all='ignore'):
+            tot = (hits["te"] - hits["le"]) & 0x7f
+        fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
+        charge_dac = charge_dac[noisy_mask]
+        occupancy[noisy_indices,:] = 0
 
         # S-Curve as 2D histogram
         occupancy_charges = occupancy_edges[2].astype(np.float32)
@@ -137,9 +167,9 @@ def main(input_file, overwrite=False):
                 continue
             fc = max(0, fc - col_start)
             lc = min(col_n - 1, lc - col_start)
-            th_mean = ufloat(np.mean(threshold_DAC[fc:lc+1,:]),
-                             np.std(threshold_DAC[fc:lc+1,:], ddof=1))
-            plt.hist(threshold_DAC[fc:lc+1,:].reshape(-1), bins=m2-m1, range=[m1, m2],
+            th = threshold_DAC[fc:lc+1,:]
+            th_mean = ufloat(np.mean(th[th > 0]), np.std(th[th > 0], ddof=1))
+            plt.hist(th.reshape(-1), bins=m2-m1, range=[m1, m2],
                      label=f"{name} ${th_mean:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle("Threshold distribution")
@@ -173,9 +203,9 @@ def main(input_file, overwrite=False):
                 continue
             fc = max(0, fc - col_start)
             lc = min(col_n - 1, lc - col_start)
-            noise_mean = ufloat(np.mean(noise_DAC[fc:lc+1,:]),
-                                np.std(noise_DAC[fc:lc+1,:], ddof=1))
-            plt.hist(noise_DAC[fc:lc+1,:].reshape(-1), bins=min(20*m, 100), range=[0, m],
+            ns = noise_DAC[fc:lc+1,:]
+            noise_mean = ufloat(np.mean(ns[ns > 0]), np.std(ns[ns > 0], ddof=1))
+            plt.hist(ns.reshape(-1), bins=min(20*m, 100), range=[0, m],
                      label=f"{name} ${noise_mean:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle(f"Noise (width of s-curve slope) distribution")
