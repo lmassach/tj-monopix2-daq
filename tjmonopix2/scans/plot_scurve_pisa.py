@@ -131,14 +131,15 @@ def main(input_file, overwrite=False):
         threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
         m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
         m2 = int(min(charge_dac_range[1], threshold_DAC.max() + 2))
-        for fc, lc, name in FRONTENDS:
+        for i, (fc, lc, name) in enumerate(FRONTENDS):
             if fc >= col_stop or lc < col_start:
                 continue
             fc = max(0, fc - col_start)
             lc = min(col_n - 1, lc - col_start)
-            plt.hist(threshold_DAC[fc:lc+1,:].reshape(-1), bins=m2-m1, range=[m1, m2], label=name, histtype='step')
+            plt.hist(threshold_DAC[fc:lc+1,:].reshape(-1), bins=m2-m1, range=[m1, m2],
+                     label=name, histtype='step', color=f"C{i}")
         plt.title(subtitle)
-        plt.suptitle(f"Threshold distribution ({name})")
+        plt.suptitle("Threshold distribution")
         plt.xlabel("Threshold [DAC]")
         plt.ylabel("Pixels / bin")
         set_integer_ticks(plt.gca().yaxis)
@@ -164,14 +165,15 @@ def main(input_file, overwrite=False):
         # as a variance with the weights above
         noise_DAC = np.sqrt(average((occupancy_charges - np.expand_dims(threshold_DAC, -1))**2, axis=2, weights=w, invalid=0))
         m = int(np.ceil(noise_DAC.max(initial=0, where=np.isfinite(noise_DAC)))) + 1
-        for fc, lc, name in FRONTENDS:
+        for i, (fc, lc, name) in enumerate(FRONTENDS):
             if fc >= col_stop or lc < col_start:
                 continue
             fc = max(0, fc - col_start)
             lc = min(col_n - 1, lc - col_start)
-            plt.hist(noise_DAC[fc:lc+1,:].reshape(-1), bins=min(2*m, 100), range=[0, m], label=name, histtype='step')
+            plt.hist(noise_DAC[fc:lc+1,:].reshape(-1), bins=min(2*m, 100), range=[0, m],
+                     label=name, histtype='step', color=f"C{i}")
         plt.title(subtitle)
-        plt.suptitle(f"Noise (width of s-curve slope) distribution ({name})")
+        plt.suptitle(f"Noise (width of s-curve slope) distribution")
         plt.xlabel("Noise [DAC]")
         plt.ylabel("Pixels / bin")
         set_integer_ticks(plt.gca().yaxis)

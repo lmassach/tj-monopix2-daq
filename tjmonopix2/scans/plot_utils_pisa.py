@@ -95,12 +95,15 @@ def draw_summary(input_file_path, cfg):
             f"{os.path.abspath(input_file_path)}\n"
             f"Chip =  {cfg.get('configuration_in.chip.settings.chip_sn')}\n"
             f"Script version = {get_commit()}\n\n"
-            f"{cfg.get('configuration_in.scan.run_config.scan_id')}\n"
             + ", ".join(
                 f"{r} = {cfg.get(f'configuration_out.chip.registers.{r}')}"
                 for r in [
                     "IBIAS", "ITHR", "ICASN", "IDB", "ITUNE", "VRESET", "VCASP",
                     "VCASC", "VCLIP", "VL", "VH", "ICOMP", "IDEL", "IRAM"])
+            + f"\n\n{cfg.get('configuration_in.scan.run_config.scan_id')}\n"
+            + ", ".join(
+                f"{x.split('.')[-1]} = {cfg[x]}" for x in cfg.keys()
+                if x.startswith("configuration_in.scan.scan_config."))
         ), (0.5, 0.5), ha='center', va='center')
     plt.gca().set_axis_off()
 
@@ -135,7 +138,7 @@ def frontend_names_on_top(ax=None):
         if fc > xh or lc < xl:
             continue
         fc = max(xl, fc)
-        lc = min(xh, lc)
+        lc = min(xh, lc + 1)
         lx.append((fc + lc) / 2)
         lt.append(name.replace(" Casc.", "$_C$"))
     ax2.set_xticks(lx, minor=True)
