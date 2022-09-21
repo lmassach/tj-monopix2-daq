@@ -9,7 +9,7 @@ import tables as tb
 __all__ = [
     'FRONTENDS', 'get_config_dict', 'split_long_text', 'get_commit',
     'draw_summary', 'set_integer_ticks', 'integer_ticks_colorbar',
-    'frontend_names_on_top']
+    'frontend_names_on_top', 'groupwise']
 
 FRONTENDS = [
     # First col (included), last col (included), name
@@ -143,3 +143,20 @@ def frontend_names_on_top(ax=None):
         lt.append(name.replace(" Casc.", "$_C$"))
     ax2.set_xticks(lx, minor=True)
     ax2.set_xticklabels(lt, minor=True)
+
+
+def groupwise(iterable, n):
+    """Returns items from the iterable in groups of n, i.e. groupwise('abcdef', 3) -> 'abc', 'def'."""
+    i = iter(iterable)
+    def get():
+        items = []
+        for _ in range(n):
+            try:
+                items.append(next(i))
+            except StopIteration:
+                break
+        return items
+    r = get()
+    while len(r):
+        yield r
+        r = get()

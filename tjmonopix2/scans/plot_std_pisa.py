@@ -83,6 +83,45 @@ def main(input_file, overwrite=False):
         frontend_names_on_top()
         pdf.savefig(); plt.clf()
 
+        # Noisy pixels
+        if cfg.get("configuration_in.scan.run_config.scan_id") == "source_scan":
+            MAX_RATE = 1  # Above this rate [Hz] pixels are marked noisy
+            scan_time = float(cfg["configuration_in.scan.scan_config.scan_time"])
+            max_hits = scan_time * MAX_RATE
+            mask = counts2d > max_hits
+            plt.axes((0.125, 0.11, 0.775, 0.72))
+            plt.pcolormesh(edges, edges, 1 * mask.transpose(), vmin=0, vmax=1,
+                           rasterized=True)  # Necessary for quick save and view in PDF
+            plt.suptitle("Noisy pixels in yellow (ignore this plot if source was used)")
+            plt.title(f"Noisy means rate > {MAX_RATE:.3g} Hz")
+            plt.xlabel("Col")
+            plt.ylabel("Row")
+            set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+            frontend_names_on_top()
+            pdf.savefig(); plt.clf()
+
+            if np.count_nonzero(mask):
+                noisy_list = np.argwhere(mask)
+                noisy_indices = np.nonzero(mask)
+                srt = np.argsort(-counts2d[noisy_indices])
+                noisy_indices = tuple(x[srt] for x in noisy_indices)
+                noisy_list = noisy_list[srt]
+                mi = min(len(noisy_list), 100)
+                tmp = "\n".join(
+                    ",    ".join(f"({a}, {b}) = {float(c)/scan_time:.3g}" for (a, b), c in g)
+                    for g in groupwise(zip(noisy_list[:mi], counts2d[tuple(x[:mi] for x in noisy_indices)]), 4))
+                plt.annotate(
+                    split_long_text(
+                        "Noisiest pixels (col, row) = rate [Hz]\n"
+                        f"{tmp}"
+                        f'{", ..." if len(noisy_list) > mi else ""}'
+                        f"\nTotal = {len(noisy_list)} pixels"
+                    ), (0.5, 0.5), ha='center', va='center')
+            else:
+                plt.annotate("No noisy pixel found.", (0.5, 0.5), ha='center', va='center')
+            plt.gca().set_axis_off()
+            pdf.savefig(); plt.clf()
+
         plt.close()
 
 

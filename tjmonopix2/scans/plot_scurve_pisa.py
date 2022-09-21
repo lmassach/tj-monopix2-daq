@@ -31,23 +31,6 @@ def average(a, axis=None, weights=1, invalid=np.NaN):
     return np.nan_to_num(np.sum(a * weights, axis=axis).astype(float) / np.sum(weights, axis=axis).astype(float), nan=invalid)
 
 
-def groupwise(iterable, n):
-    """Returns items from the iterable in groups of n, i.e. groupwise('abcdef', 3) -> 'abc', 'def'."""
-    i = iter(iterable)
-    def get():
-        items = []
-        for _ in range(n):
-            try:
-                items.append(next(i))
-            except StopIteration:
-                break
-        return tuple(items)
-    r = get()
-    while len(r):
-        yield r
-        r = get()
-
-
 def main(input_file, overwrite=False):
     output_file = os.path.splitext(input_file)[0] + "_scurve.pdf"
     if os.path.isfile(output_file) and not overwrite:
@@ -115,7 +98,7 @@ def main(input_file, overwrite=False):
             mi = min(len(noisy_list), 100)
             tmp = "\n".join(
                 ",    ".join(f"({a}, {b}) = {float(c):.1f}" for (a, b), c in g)
-                for g in groupwise(zip(noisy_list[:mi], max_occu[noisy_indices[:mi]]), 4))
+                for g in groupwise(zip(noisy_list[:mi], max_occu[tuple(x[:mi] for x in noisy_indices)]), 4))
             plt.annotate(
                 split_long_text(
                     "Noisiest pixels (col, row) = occupancy$_{max}$\n"
