@@ -17,10 +17,11 @@ scan_configuration = {
     'stop_column': 448,
     'start_row': 0,
     'stop_row': 512,
+
+    'scan_time': 5,  # seconds
 }
 
 register_overrides = {
-    'scan_time': 60,  # seconds
     'ITHR': 20,
     'IBIAS': 50,
     'VRESET': 143,
@@ -55,8 +56,6 @@ class SourceScan(ScanBase):
         self.daq.rx_channels['rx0']['DATA_DELAY'] = 14
 
     def _scan(self, scan_time=60, **_):
-        scan_time = self.register_overrides.get("scan_time", time)
-
         pbar = tqdm(total=int(scan_time), unit='s')
         now = time.time()
         end_time = now + scan_time
