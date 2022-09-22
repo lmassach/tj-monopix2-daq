@@ -21,10 +21,10 @@ scan_configuration = {
 
 register_overrides = {
     'scan_time': 60,  # seconds
-    'ITHR': 64,
+    'ITHR': 20,
     'IBIAS': 50,
     'VRESET': 143,
-    'ICASN': 0,
+    'ICASN': 10,
     'VCASP': 93,
     'IDB': 100,
     'MON_EN_IDB': 1
@@ -52,11 +52,6 @@ class SourceScan(ScanBase):
                 self.chip.registers[r].write(self.register_overrides[r])
             #print("Write: ", r, " to ", self.register_overrides[r])
 
-        ret = {}
-        for r in registers:
-            ret[r] = self.chip.registers[r].read()
-        self.scan_registers = ret
-
         self.daq.rx_channels['rx0']['DATA_DELAY'] = 14
 
     def _scan(self, scan_time=60, **_):
@@ -73,6 +68,11 @@ class SourceScan(ScanBase):
                 now = time.time()
                 pbar.update(int(round(now - last_time)))
         pbar.close()
+
+        ret = {}
+        # for r in registers:
+        #     ret[r] = self.chip.registers[r].read()
+        self.scan_registers = ret
 
         self.log.success('Scan finished')
 

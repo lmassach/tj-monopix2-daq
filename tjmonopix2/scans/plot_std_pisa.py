@@ -12,7 +12,7 @@ from tqdm import tqdm
 from plot_utils_pisa import *
 
 
-def main(input_file, overwrite=False):
+def main(input_file, overwrite=False, log_tot=False):
     output_file = os.path.splitext(input_file)[0] + ".pdf"
     if os.path.isfile(output_file) and not overwrite:
         return
@@ -51,7 +51,11 @@ def main(input_file, overwrite=False):
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")
         plt.grid(axis='y')
-        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        if log_tot:
+            plt.yscale('log')
+            set_integer_ticks(plt.gca().xaxis)
+        else:
+            set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         plt.legend()
         pdf.savefig(); plt.clf()
 
@@ -132,6 +136,8 @@ if __name__ == "__main__":
         help="The _interpreted.h5 file(s). If not given, looks in output_data/module_0/chip_0.")
     parser.add_argument("-f", "--overwrite", action="store_true",
                         help="Overwrite plots when already present.")
+    parser.add_argument("--log-tot", action="store_true",
+                        help="Use log scale for ToT.")
     args = parser.parse_args()
 
     files = []
@@ -144,6 +150,6 @@ if __name__ == "__main__":
 
     for fp in tqdm(files):
         try:
-            main(fp, args.overwrite)
+            main(fp, args.overwrite, args.log_tot)
         except Exception:
             print(traceback.format_exc())

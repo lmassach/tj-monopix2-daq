@@ -235,6 +235,23 @@ def main(input_file, overwrite=False):
             cb.set_label("Hits / bin")
             pdf.savefig(); plt.clf()
 
+        # Time since previous hit vs injected charge
+        m = 32 if tot.max() <= 32 else 128
+        for (fc, lc, name), mask in zip(chain([(0, 511, 'All FEs')], FRONTENDS), chain([slice(-1)], fe_masks)):
+            if fc >= col_stop or lc < col_start:
+                continue
+            plt.hist2d(charge_dac[mask][1:], np.diff(hits["timestamp"][mask]) / 640.,
+                       bins=[charge_dac_bins, 479], range=[charge_dac_range, [25e-3, 12]],
+                       cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
+            plt.title(subtitle)
+            plt.suptitle(f"Time between hits ({name})")
+            plt.xlabel("Injected charge [DAC]")
+            plt.ylabel("$\\Delta t_{{token}}$ from previous hit [μs]")
+            set_integer_ticks(plt.gca().xaxis)
+            cb = integer_ticks_colorbar()
+            cb.set_label("Hits / bin")
+            pdf.savefig(); plt.clf()
+
         plt.close()
 
 
