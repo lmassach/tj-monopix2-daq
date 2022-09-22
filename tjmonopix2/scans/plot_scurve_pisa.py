@@ -6,23 +6,12 @@ from itertools import chain
 import os
 import traceback
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
 from tqdm import tqdm
 from uncertainties import ufloat
 from plot_utils_pisa import *
-
-COLOR_GRADIENTS = [
-    # Blue fading to white
-    [((0x1f + c*0xff/100) / 512, (0x77 + c*0xff/100) / 512, (0xb4 + c*0xff/100) / 512) for c in range(64)],
-    # Orange fading to white
-    [((0xff + c*0xff/100) / 512, (0x7f + c*0xff/100) / 512, (0x0e + c*0xff/100) / 512) for c in range(64)],
-    # Green fading to white
-    [((0x2c + c*0xff/100) / 512, (0xa0 + c*0xff/100) / 512, (0x2c + c*0xff/100) / 512) for c in range(64)],
-    # Red fading to white
-    [((0xd6 + c*0xff/100) / 512, (0x27 + c*0xff/100) / 512, (0x28 + c*0xff/100) / 512) for c in range(64)]]
 
 
 @np.errstate(divide='ignore')
@@ -44,10 +33,10 @@ def main(input_file, overwrite=False):
         pdf.savefig(); plt.clf()
 
         # Load hits
-        hits = f.root.Dut[:]
+        hits = f.root.Dut
         with np.errstate(all='ignore'):
-            tot = (hits["te"] - hits["le"]) & 0x7f
-        fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
+            tot = (hits.col("te") - hits.col("le")) & 0x7f
+        fe_masks = [(hits.col("col") >= fc) & (hits.col("col") <= lc) for fc, lc, _ in FRONTENDS]
 
         # Load information on injected charge and steps taken
         sp = f.root.configuration_in.scan.scan_params[:]
@@ -59,10 +48,11 @@ def main(input_file, overwrite=False):
             else:
                 scan_params[i]["scan_param_id"] = i
         del sp
-        vh = scan_params["vcal_high"][hits["scan_param_id"]]
-        vl = scan_params["vcal_low"][hits["scan_param_id"]]
+        vh = scan_params["vcal_high"][hits.col("scan_param_id")]
+        vl = scan_params["vcal_low"][hits.col("scan_param_id")]
         del scan_params
         charge_dac = vh - vl
+        del vl, vh
         n_injections = int(cfg["configuration_in.scan.scan_config.n_injections"])
         the_vh = int(cfg["configuration_in.scan.scan_config.VCAL_HIGH"])
         start_vl = int(cfg["configuration_in.scan.scan_config.VCAL_LOW_start"])
@@ -80,7 +70,7 @@ def main(input_file, overwrite=False):
         col_stop = int(cfg["configuration_in.scan.scan_config.stop_column"])
         row_n, col_n = row_stop - row_start, col_stop - col_start
         occupancy, occupancy_edges = np.histogramdd(
-            (hits["col"], hits["row"], charge_dac),
+            (hits.col("col"), hits.col("row"), charge_dac),
             bins=[col_n, row_n, charge_dac_bins],
             range=[[col_start, col_stop], [row_start, row_stop], charge_dac_range])
         occupancy /= n_injections
@@ -233,7 +223,7 @@ def main(input_file, overwrite=False):
         for (fc, lc, name), mask in zip(chain([(0, 511, 'All FEs')], FRONTENDS), chain([slice(-1)], fe_masks)):
             if fc >= col_stop or lc < col_start:
                 continue
-            plt.hist2d(tot[mask][1:], np.diff(hits["timestamp"][mask]) / 640.,
+            plt.hist2d(tot[mask][1:], np.diff(hits.col("timestamp")[mask]) / 640.,
                        bins=[m, 479], range=[[-0.5, m + 0.5], [25e-3, 12]],
                        cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
             plt.title(subtitle)
