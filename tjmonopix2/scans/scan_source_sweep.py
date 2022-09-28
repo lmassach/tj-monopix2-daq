@@ -7,6 +7,7 @@
 
 from scan_source import SourceScan
 import datetime
+import tqdm
 
 
 scan_configuration = {
@@ -24,8 +25,8 @@ default_register_overrides = {
     'VRESET': 143,
     'ICASN': 10,
     'VCASP': 93,
-    'IDB': 100,
-    'MON_EN_IDB': 1
+    'IDB': 200,
+    # 'MON_EN_IDB': 1
 }
 
 sweeps = {  # REGISTER: (START, STOP, STEP)
@@ -35,7 +36,8 @@ sweeps = {  # REGISTER: (START, STOP, STEP)
     #'VCASP': (100, 140, 5),
     #'ICASN': (0, 16, 1)
     #'ITHR': (20, 41, 20),
-    'ICASN': (5, 16, 5)
+    #'ICASN': (5, 16, 5),
+    'IDB': (100, 250, 10)
 }
 
 if __name__ == "__main__":
@@ -43,7 +45,7 @@ if __name__ == "__main__":
     with open(f"output_data/scan_source_sweep_{date}.txt", "a") as ofs:
         for reg, sweep_range in sweeps.items():
             print(f"!!! Sweeping over {reg} in range {sweep_range}")
-            for i in range(*sweep_range):
+            for i in tqdm.tqdm(range(*sweep_range), unit=f"{reg} steps", smoothing=0):
                 print(f"!!! Sweeping over {reg}: {i}")
                 register_overrides = default_register_overrides.copy()
                 register_overrides[reg] = i
