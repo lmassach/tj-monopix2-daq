@@ -240,7 +240,7 @@ def main(input_file, overwrite=False):
         for (fc, lc, name), mask in zip(chain([(0, 511, 'All FEs')], FRONTENDS), chain([slice(-1)], fe_masks)):
             if fc >= col_stop or lc < col_start:
                 continue
-            plt.hist2d(charge_dac[mask][1:], np.diff(hits["timestamp"][mask]) / 640.,
+            plt.hist2d(charge_dac[mask][1:], np.diff(hits.col("timestamp")[mask]) / 640.,
                        bins=[charge_dac_bins, 479], range=[charge_dac_range, [25e-3, 12]],
                        cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
             plt.title(subtitle)
