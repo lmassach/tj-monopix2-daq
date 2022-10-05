@@ -5,6 +5,7 @@ import glob
 import os
 import traceback
 from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.cm
 import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
@@ -125,6 +126,22 @@ def main(input_file, overwrite=False, log_tot=False):
                 plt.annotate("No noisy pixel found.", (0.5, 0.5), ha='center', va='center')
             plt.gca().set_axis_off()
             pdf.savefig(); plt.clf()
+
+        # Source positioning
+        counts2d16, edges16, _ = np.histogram2d(hits["col"], hits["row"], bins=[32, 32], range=[[0, 512], [0, 512]])
+        m = np.quantile(counts2d16[counts2d16 > 0], 0.99) * 1.2 if np.any(counts2d > 0) else 1
+        cmap = matplotlib.cm.get_cmap("viridis").copy()
+        cmap.set_over("r")
+        plt.pcolormesh(edges16, edges16, counts2d16.transpose(), vmin=0, vmax=m,
+                       cmap=cmap, rasterized=True)  # Necessary for quick save and view in PDF
+        plt.title("Hit map in 16x16 regions for source positioning")
+        plt.xlabel("Col")
+        plt.ylabel("Row")
+        cb = plt.colorbar()
+        cb.set_label("Avg. hits / 16x16 region (red = out of scale)")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        frontend_names_on_top()
+        pdf.savefig(); plt.clf()
 
         plt.close()
 
