@@ -6,12 +6,16 @@ from itertools import chain
 import os
 import traceback
 from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.cm
 import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
 from tqdm import tqdm
 from uncertainties import ufloat
 from plot_utils_pisa import *
+
+VIRIDIS_WHITE_UNDER = matplotlib.cm.get_cmap('viridis').copy()
+VIRIDIS_WHITE_UNDER.set_under('w')
 
 
 @np.errstate(divide='ignore')
@@ -25,18 +29,11 @@ def main(input_file, overwrite=False):
     if os.path.isfile(output_file) and not overwrite:
         return
     print("Plotting", input_file)
-    with tb.open_file(input_file) as f, PdfPages(output_file) as pdf:
+    # Open file and fill histograms (actual plotting below)
+    with tb.open_file(input_file) as f:
         cfg = get_config_dict(f)
-        plt.figure(figsize=(6.4, 4.8))
 
-        draw_summary(input_file, cfg)
-        pdf.savefig(); plt.clf()
-
-        # Load hits
-        hits = f.root.Dut
-        with np.errstate(all='ignore'):
-            tot = (hits.col("te") - hits.col("le")) & 0x7f
-        fe_masks = [(hits.col("col") >= fc) & (hits.col("col") <= lc) for fc, lc, _ in FRONTENDS]
+        n_hits = f.root.Dut.shape[0]
 
         # Load information on injected charge and steps taken
         sp = f.root.configuration_in.scan.scan_params[:]
@@ -48,11 +45,6 @@ def main(input_file, overwrite=False):
             else:
                 scan_params[i]["scan_param_id"] = i
         del sp
-        vh = scan_params["vcal_high"][hits.col("scan_param_id")]
-        vl = scan_params["vcal_low"][hits.col("scan_param_id")]
-        del scan_params
-        charge_dac = vh - vl
-        del vl, vh
         n_injections = int(cfg["configuration_in.scan.scan_config.n_injections"])
         the_vh = int(cfg["configuration_in.scan.scan_config.VCAL_HIGH"])
         start_vl = int(cfg["configuration_in.scan.scan_config.VCAL_LOW_start"])
@@ -63,17 +55,72 @@ def main(input_file, overwrite=False):
         subtitle = f"VH = {the_vh}, VL = {start_vl}..{stop_vl} (step {step_vl})"
         charge_dac_bins = len(charge_dac_values)
         charge_dac_range = [min(charge_dac_values) - 0.5, max(charge_dac_values) + 0.5]
-        # Count hits per pixel per injected charge value
         row_start = int(cfg["configuration_in.scan.scan_config.start_row"])
         row_stop = int(cfg["configuration_in.scan.scan_config.stop_row"])
         col_start = int(cfg["configuration_in.scan.scan_config.start_column"])
         col_stop = int(cfg["configuration_in.scan.scan_config.stop_column"])
         row_n, col_n = row_stop - row_start, col_stop - col_start
-        occupancy, occupancy_edges = np.histogramdd(
-            (hits.col("col"), hits.col("row"), charge_dac),
-            bins=[col_n, row_n, charge_dac_bins],
-            range=[[col_start, col_stop], [row_start, row_stop], charge_dac_range])
-        occupancy /= n_injections
+
+        # Prepare histograms
+        occupancy = np.zeros((col_n, row_n, charge_dac_bins))
+        tot_hist = [np.zeros((charge_dac_bins, 128)) for _ in range(len(FRONTENDS) + 1)]
+        dt_tot_hist = [np.zeros((128, 479)) for _ in range(len(FRONTENDS) + 1)]
+        dt_q_hist = [np.zeros((charge_dac_bins, 479)) for _ in range(len(FRONTENDS) + 1)]
+
+        # Process one chunk of data at a time
+        csz = 2**24
+        for i_first in tqdm(range(0, f.root.Dut.shape[0], csz), unit="chunk"):
+            i_last = min(f.root.Dut.shape[0], i_first + csz)
+
+            # Load hits
+            hits = f.root.Dut[i_first:i_last]
+            with np.errstate(all='ignore'):
+                tot = (hits["te"] - hits["le"]) & 0x7f
+            fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
+
+            # Determine injected charge for each hit
+            vh = scan_params["vcal_high"][hits["scan_param_id"]]
+            vl = scan_params["vcal_low"][hits["scan_param_id"]]
+            charge_dac = vh - vl
+            del vl, vh
+            # Count hits per pixel per injected charge value
+            occupancy_tmp, occupancy_edges = np.histogramdd(
+                (hits["col"], hits["row"], charge_dac),
+                bins=[col_n, row_n, charge_dac_bins],
+                range=[[col_start, col_stop], [row_start, row_stop], charge_dac_range])
+            occupancy_tmp /= n_injections
+            occupancy += occupancy_tmp
+            del occupancy_tmp
+
+            for i, ((fc, lc, _), mask) in enumerate(zip(chain([(0, 511, 'All FEs')], FRONTENDS), chain([slice(-1)], fe_masks))):
+                if fc >= col_stop or lc < col_start:
+                    continue
+
+                # ToT vs injected charge as 2D histogram
+                tot_hist[i] += np.histogram2d(
+                    charge_dac[mask], tot[mask], bins=[charge_dac_bins, 128],
+                    range=[charge_dac_range, [-0.5, 127.5]])[0]
+
+                # Histograms of time since previous hit vs TOT and QINJ
+                dt_tot_hist[i] += np.histogram2d(
+                    tot[mask][1:], np.diff(hits["timestamp"][mask]) / 640.,
+                    bins=[128, 479], range=[[-0.5, 127.5], [25e-3, 12]])[0]
+                dt_q_hist[i] += np.histogram2d(
+                    charge_dac[mask][1:], np.diff(hits["timestamp"][mask]) / 640.,
+                    bins=[charge_dac_bins, 479], range=[charge_dac_range, [25e-3, 12]])[0]
+
+    # Do the actual plotting
+    with PdfPages(output_file) as pdf:
+        plt.figure(figsize=(6.4, 4.8))
+
+        draw_summary(input_file, cfg)
+        pdf.savefig(); plt.clf()
+
+        if n_hits == 0:
+            plt.annotate("No hits recorded!", (0.5, 0.5), ha='center', va='center')
+            plt.gca().set_axis_off()
+            pdf.savefig(); plt.clf()
+            return
 
         # Look for the noisiest pixels
         top_left = np.array([[col_start, row_start]])
@@ -124,13 +171,12 @@ def main(input_file, overwrite=False):
             pdf.savefig(); plt.clf()
 
         # ToT vs injected charge as 2D histogram
-        m = 32 if tot.max() <= 32 else 128
-        for (fc, lc, name), mask in zip(chain([(0, 511, 'All FEs')], FRONTENDS), chain([slice(-1)], fe_masks)):
+        for (fc, lc, name), hist in zip(chain([(0, 511, 'All FEs')], FRONTENDS), tot_hist):
             if fc >= col_stop or lc < col_start:
                 continue
-            plt.hist2d(charge_dac[mask], tot[mask], bins=[250, m],
-                       range=[[-0.5, 249.5], [-0.5, m + 0.5]],
-                       cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
+            plt.pcolormesh(
+                occupancy_edges[2], np.linspace(-0.5, 127.5, 129, endpoint=True),
+                hist.transpose(), vmin=1, cmap=VIRIDIS_WHITE_UNDER, rasterized=True)  # Necessary for quick save and view in PDF
             plt.title(subtitle)
             plt.suptitle(f"ToT curve ({name})")
             plt.xlabel("Injected charge [DAC]")
@@ -147,6 +193,8 @@ def main(input_file, overwrite=False):
         # Assuming the shape is an erf, this estimator is consistent
         w = np.maximum(0, 0.5 - np.abs(occupancy - 0.5))
         threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
+
+        # Threshold hist
         m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
         m2 = int(min(charge_dac_range[1], threshold_DAC.max() + 2))
         for i, (fc, lc, name) in enumerate(FRONTENDS):
@@ -185,6 +233,8 @@ def main(input_file, overwrite=False):
         # as a variance with the weights above
         noise_DAC = np.sqrt(average((occupancy_charges - np.expand_dims(threshold_DAC, -1))**2, axis=2, weights=w, invalid=0))
         del w
+
+        # Noise hist
         m = int(np.ceil(noise_DAC.max(initial=0, where=np.isfinite(noise_DAC)))) + 1
         for i, (fc, lc, name) in enumerate(FRONTENDS):
             if fc >= col_stop or lc < col_start:
@@ -219,13 +269,13 @@ def main(input_file, overwrite=False):
         pdf.savefig(); plt.clf()
 
         # Time since previous hit vs ToT
-        m = 32 if tot.max() <= 32 else 128
-        for (fc, lc, name), mask in zip(chain([(0, 511, 'All FEs')], FRONTENDS), chain([slice(-1)], fe_masks)):
+        for (fc, lc, name), hist in zip(chain([(0, 511, 'All FEs')], FRONTENDS), dt_tot_hist):
             if fc >= col_stop or lc < col_start:
                 continue
-            plt.hist2d(tot[mask][1:], np.diff(hits.col("timestamp")[mask]) / 640.,
-                       bins=[m, 479], range=[[-0.5, m + 0.5], [25e-3, 12]],
-                       cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
+            plt.pcolormesh(
+                np.linspace(-0.5, 127.5, 129, endpoint=True),
+                np.linspace(25e-3, 12, 480, endpoint=True),
+                hist.transpose(), vmin=1, cmap=VIRIDIS_WHITE_UNDER, rasterized=True)
             plt.title(subtitle)
             plt.suptitle(f"Time between hits ({name})")
             plt.xlabel("ToT [25 ns]")
@@ -237,12 +287,13 @@ def main(input_file, overwrite=False):
 
         # Time since previous hit vs injected charge
         m = 32 if tot.max() <= 32 else 128
-        for (fc, lc, name), mask in zip(chain([(0, 511, 'All FEs')], FRONTENDS), chain([slice(-1)], fe_masks)):
+        for (fc, lc, name), hist in zip(chain([(0, 511, 'All FEs')], FRONTENDS), dt_q_hist):
             if fc >= col_stop or lc < col_start:
                 continue
-            plt.hist2d(charge_dac[mask][1:], np.diff(hits.col("timestamp")[mask]) / 640.,
-                       bins=[charge_dac_bins, 479], range=[charge_dac_range, [25e-3, 12]],
-                       cmin=1, rasterized=True)  # Necessary for quick save and view in PDF
+            plt.pcolormesh(
+                occupancy_edges[2],
+                np.linspace(25e-3, 12, 480, endpoint=True),
+                hist.transpose(), vmin=1, cmap=VIRIDIS_WHITE_UNDER, rasterized=True)
             plt.title(subtitle)
             plt.suptitle(f"Time between hits ({name})")
             plt.xlabel("Injected charge [DAC]")
@@ -273,7 +324,7 @@ if __name__ == "__main__":
         files.extend(glob.glob("output_data/module_0/chip_0/*_threshold_scan_interpreted.h5"))
     files.sort()
 
-    for fp in tqdm(files):
+    for fp in tqdm(files, unit="file"):
         try:
             main(fp, args.overwrite)
         except Exception:
