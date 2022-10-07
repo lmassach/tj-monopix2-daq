@@ -5,6 +5,7 @@ import glob
 import os
 import traceback
 from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.cm
 import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
@@ -23,12 +24,10 @@ def main(input_file, overwrite=False, log_tot=False):
 
         draw_summary(input_file, cfg)
         pdf.savefig(); plt.clf()
+        # print("Summary")
 
-        hits = f.root.Dut[:]
-        counts2d, edges, _ = np.histogram2d(hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]])
-        with np.errstate(all='ignore'):
-            tot = (hits["te"] - hits["le"]) & 0x7f
-        fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
+        hits = f.root.Dut
+        counts2d, edges, _ = np.histogram2d(hits.col("col"), hits.col("row"), bins=[512, 512], range=[[0, 512], [0, 512]])
 
         # Histogram of hits per pixel
         m = np.quantile(counts2d[counts2d > 0], 0.99) * 1.2 if np.any(counts2d > 0) else 1
@@ -43,8 +42,12 @@ def main(input_file, overwrite=False, log_tot=False):
         set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         plt.legend()
         pdf.savefig(); plt.clf()
+        # print("Hits hist")
 
         # Histogram of ToT
+        with np.errstate(all='ignore'):
+            tot = (hits.col("te") - hits.col("le")) & 0x7f
+        fe_masks = [(hits.col("col") >= fc) & (hits.col("col") <= lc) for fc, lc, _ in FRONTENDS]
         for (_, _, name), mask in zip(FRONTENDS, fe_masks):
             plt.hist(tot[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("ToT")
@@ -58,6 +61,8 @@ def main(input_file, overwrite=False, log_tot=False):
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         plt.legend()
         pdf.savefig(); plt.clf()
+        del fe_masks
+        # print("ToT Hist")
 
         # Hit map
         plt.pcolormesh(edges, edges, counts2d.transpose(), vmin=0, vmax=m,
@@ -70,22 +75,26 @@ def main(input_file, overwrite=False, log_tot=False):
         set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         frontend_names_on_top()
         pdf.savefig(); plt.clf()
+        # print("Hitmap")
 
         # Map of the average ToT
-        tot2d, _, _ = np.histogram2d(hits["col"], hits["row"], bins=[512, 512],
-                                     range=[[0, 512], [0, 512]], weights=tot)
-        with np.errstate(all='ignore'):
-            totavg = tot2d /counts2d
-        plt.pcolormesh(edges, edges, totavg.transpose(), vmin=-0.5, vmax=127.5,
-                       rasterized=True)  # Necessary for quick save and view in PDF
-        plt.title("Average ToT map")
-        plt.xlabel("Col")
-        plt.ylabel("Row")
-        cb = integer_ticks_colorbar()
-        cb.set_label("ToT [25 ns]")
-        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
-        frontend_names_on_top()
-        pdf.savefig(); plt.clf()
+        if hits.shape[0] < 10e6:
+            tot2d, _, _ = np.histogram2d(hits.col("col"), hits.col("row"), bins=[512, 512],
+                                        range=[[0, 512], [0, 512]], weights=tot)
+            with np.errstate(all='ignore'):
+                totavg = tot2d /counts2d
+            plt.pcolormesh(edges, edges, totavg.transpose(), vmin=-0.5, vmax=127.5,
+                        rasterized=True)  # Necessary for quick save and view in PDF
+            plt.title("Average ToT map")
+            plt.xlabel("Col")
+            plt.ylabel("Row")
+            cb = integer_ticks_colorbar()
+            cb.set_label("ToT [25 ns]")
+            set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+            frontend_names_on_top()
+            pdf.savefig(); plt.clf()
+            # print("ToT map")
+        del tot
 
         # Noisy pixels
         if cfg.get("configuration_in.scan.run_config.scan_id") == "source_scan":
@@ -125,6 +134,24 @@ def main(input_file, overwrite=False, log_tot=False):
                 plt.annotate("No noisy pixel found.", (0.5, 0.5), ha='center', va='center')
             plt.gca().set_axis_off()
             pdf.savefig(); plt.clf()
+        # print("Noisy")
+
+        # Source positioning
+        counts2d16, edges16, _ = np.histogram2d(hits.col("col"), hits.col("row"), bins=[32, 32], range=[[0, 512], [0, 512]])
+        m = np.quantile(counts2d16[counts2d16 > 0], 0.99) * 1.2 if np.any(counts2d > 0) else 1
+        cmap = matplotlib.cm.get_cmap("viridis").copy()
+        cmap.set_over("r")
+        plt.pcolormesh(edges16, edges16, counts2d16.transpose(), vmin=0, vmax=m,
+                       cmap=cmap, rasterized=True)  # Necessary for quick save and view in PDF
+        plt.title("Hit map in 16x16 regions for source positioning")
+        plt.xlabel("Col")
+        plt.ylabel("Row")
+        cb = plt.colorbar()
+        cb.set_label("Avg. hits / 16x16 region (red = out of scale)")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        frontend_names_on_top()
+        pdf.savefig(); plt.clf()
+        # print("Source")
 
         plt.close()
 

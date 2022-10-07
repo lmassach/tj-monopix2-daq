@@ -10,9 +10,9 @@ import datetime
 
 
 scan_configuration = {
-    'start_column': 225,
+    'start_column': 219,
     'stop_column': 230,
-    'start_row': 472,
+    'start_row': 507,
     'stop_row': 512,
 
     'n_injections': 100,
@@ -23,7 +23,7 @@ scan_configuration = {
 }
 
 default_register_overrides = {
-    "ITHR": 20,
+    "ITHR": 64,
     "IBIAS": 50,
     "ICASN": 0,
     "VCASP": 93,
@@ -37,10 +37,10 @@ sweeps = {  # REGISTER: (START, STOP, STEP)
     #'ITHR': (25, 75, 5),
     #'VRESET': (70, 255, 20),
     #'IBIAS': (20, 60, 5),
-    #'VCASP': (100, 140, 5),
+    'VCASP': (3, 255, 10),
     #'ICASN': (0, 16, 1)
     #'ITHR': (20, 41, 20),
-    'ICASN': (5, 16, 5)
+    #'ICASN': (5, 16, 5)
 }
 
 if __name__ == "__main__":

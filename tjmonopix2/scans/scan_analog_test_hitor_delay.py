@@ -41,6 +41,8 @@ class AnalogScan(ScanBase):
     scan_id = 'analog_scan'
 
     def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, **_):
+        self.chip.masks['enable'][:,:] = False
+        self.chip.masks['injection'][:,:] = False
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100
