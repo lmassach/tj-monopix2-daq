@@ -35,6 +35,8 @@ class AnalogScan(ScanBase):
     scan_id = 'analog_scan'
 
     def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, **_):
+        self.chip.masks['enable'][:,:] = False
+        self.chip.masks['injection'][:,:] = False
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100
@@ -44,7 +46,7 @@ class AnalogScan(ScanBase):
         self.chip.masks.update(force=True)
 
         self.chip.registers["SEL_PULSE_EXT_CONF"].write(0)
-        
+
         for r in self.register_overrides:
             if r != 'n_injections':
                 self.chip.registers[r].write(self.register_overrides[r])
@@ -54,12 +56,12 @@ class AnalogScan(ScanBase):
 
     def _scan(self, n_injections=50, **_):
         n_injections=self.register_overrides.get("n_injections", 50)
-        
+
         pbar = tqdm(total=get_scan_loop_mask_steps(self), unit='Mask steps')
         with self.readout(scan_param_id=0):
             shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=0)
         pbar.close()
-        
+
         ret = {}
         for r in registers:
             ret[r] = self.chip.registers[r].read()
@@ -75,8 +77,8 @@ class AnalogScan(ScanBase):
             self.hist_occ = a.hist_occ
             self.hist_tot = a.hist_tot
 
-    
-    
+
+
 if __name__ == "__main__":
     with AnalogScan(scan_config=scan_configuration, register_overrides=register_overrides) as scan:
         scan.start()

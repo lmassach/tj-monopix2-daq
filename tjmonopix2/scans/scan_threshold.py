@@ -12,15 +12,15 @@ from tqdm import tqdm
 from plotting_scurves import Plotting
 
 scan_configuration = {
-    'start_column': 224,
-    'stop_column': 448,
+    'start_column': 0,
+    'stop_column': 224,
     'start_row': 0,
     'stop_row': 512,
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
-    'VCAL_LOW_start': 139,
-    'VCAL_LOW_stop': 1,
+    'VCAL_LOW_start': 100,
+    'VCAL_LOW_stop': 60,
     'VCAL_LOW_step': -1
 }
 
@@ -54,6 +54,8 @@ class ThresholdScan(ScanBase):
     scan_id = 'threshold_scan'
 
     def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, **_):
+        self.chip.masks['enable'][:,:] = False
+        self.chip.masks['injection'][:,:] = False
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100  # TDAC=4 for threshold tuning
