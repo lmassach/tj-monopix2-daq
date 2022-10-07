@@ -33,6 +33,8 @@ def main(input_file, overwrite=False):
     with tb.open_file(input_file) as f:
         cfg = get_config_dict(f)
 
+        n_hits = f.root.Dut.shape[0]
+
         # Load information on injected charge and steps taken
         sp = f.root.configuration_in.scan.scan_params[:]
         scan_params = np.zeros(sp["scan_param_id"].max() + 1, dtype=sp.dtype)
@@ -113,6 +115,12 @@ def main(input_file, overwrite=False):
 
         draw_summary(input_file, cfg)
         pdf.savefig(); plt.clf()
+
+        if n_hits == 0:
+            plt.annotate("No hits recorded!", (0.5, 0.5), ha='center', va='center')
+            plt.gca().set_axis_off()
+            pdf.savefig(); plt.clf()
+            return
 
         # Look for the noisiest pixels
         top_left = np.array([[col_start, row_start]])

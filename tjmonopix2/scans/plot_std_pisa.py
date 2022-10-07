@@ -18,16 +18,64 @@ def main(input_file, overwrite=False, log_tot=False):
     if os.path.isfile(output_file) and not overwrite:
         return
     print("Plotting", input_file)
-    with tb.open_file(input_file) as f, PdfPages(output_file) as pdf:
+    with tb.open_file(input_file) as f:
         cfg = get_config_dict(f)
+
+        n_hits = f.root.Dut.shape[0]
+
+        # Prepare histograms
+        counts2d = np.zeros((512, 512))
+        tot1d = [np.zeros(128) for _ in range(len(FRONTENDS))]
+        tot2d = np.zeros((512, 512))
+        counts2d16 = np.zeros((32, 32))
+
+        # Process one chunk of data at a time
+        csz = 2**24
+        for i_first in tqdm(range(0, f.root.Dut.shape[0], csz), unit="chunk"):
+            i_last = min(f.root.Dut.shape[0], i_first + csz)
+
+            # Load hits
+            hits = f.root.Dut[i_first:i_last]
+            with np.errstate(all='ignore'):
+                tot = (hits["te"] - hits["le"]) & 0x7f
+            fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
+
+            counts2d_tmp, counts2d_edges, _ = np.histogram2d(
+                hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]])
+            counts2d += counts2d_tmp
+            del counts2d_tmp
+
+            for i, mask in enumerate(fe_masks):
+                tot1d_tmp, tot1d_edges = np.histogram(
+                    tot[mask], bins=128, range=[-0.5, 127.5])
+                tot1d[i] += tot1d_tmp
+                del tot1d_tmp
+
+            tot2d_tmp, tot2d_edges, _  = np.histogram2d(
+                hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]],
+                weights=tot)
+            tot2d += tot2d_tmp
+            del tot2d_tmp
+
+            counts2d16_tmp, edges16, _ = np.histogram2d(
+                hits["col"], hits["row"], bins=[32, 32], range=[[0, 512], [0, 512]])
+            counts2d16 += counts2d16_tmp
+            del counts2d16_tmp
+
+            del hits, tot, fe_masks
+
+    with PdfPages(output_file) as pdf:
         plt.figure(figsize=(6.4, 4.8))
 
         draw_summary(input_file, cfg)
         pdf.savefig(); plt.clf()
         # print("Summary")
 
-        hits = f.root.Dut
-        counts2d, edges, _ = np.histogram2d(hits.col("col"), hits.col("row"), bins=[512, 512], range=[[0, 512], [0, 512]])
+        if n_hits == 0:
+            plt.annotate("No hits recorded!", (0.5, 0.5), ha='center', va='center')
+            plt.gca().set_axis_off()
+            pdf.savefig(); plt.clf()
+            return
 
         # Histogram of hits per pixel
         m = np.quantile(counts2d[counts2d > 0], 0.99) * 1.2 if np.any(counts2d > 0) else 1
@@ -45,11 +93,9 @@ def main(input_file, overwrite=False, log_tot=False):
         # print("Hits hist")
 
         # Histogram of ToT
-        with np.errstate(all='ignore'):
-            tot = (hits.col("te") - hits.col("le")) & 0x7f
-        fe_masks = [(hits.col("col") >= fc) & (hits.col("col") <= lc) for fc, lc, _ in FRONTENDS]
-        for (_, _, name), mask in zip(FRONTENDS, fe_masks):
-            plt.hist(tot[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
+        for (_, _, name), hist in zip(FRONTENDS, tot1d):
+            plt.step((tot1d_edges[1:] + tot1d_edges[:-1]) / 2,
+                     hist, where='mid', label=name)
         plt.title("ToT")
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")
@@ -61,12 +107,11 @@ def main(input_file, overwrite=False, log_tot=False):
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         plt.legend()
         pdf.savefig(); plt.clf()
-        del fe_masks
         # print("ToT Hist")
 
         # Hit map
-        plt.pcolormesh(edges, edges, counts2d.transpose(), vmin=0, vmax=m,
-                       rasterized=True)  # Necessary for quick save and view in PDF
+        plt.pcolormesh(counts2d_edges, counts2d_edges, counts2d.transpose(),
+                       vmin=0, vmax=m, rasterized=True)  # Necessary for quick save and view in PDF
         plt.title("Hit map")
         plt.xlabel("Col")
         plt.ylabel("Row")
@@ -78,23 +123,19 @@ def main(input_file, overwrite=False, log_tot=False):
         # print("Hitmap")
 
         # Map of the average ToT
-        if hits.shape[0] < 10e6:
-            tot2d, _, _ = np.histogram2d(hits.col("col"), hits.col("row"), bins=[512, 512],
-                                        range=[[0, 512], [0, 512]], weights=tot)
-            with np.errstate(all='ignore'):
-                totavg = tot2d /counts2d
-            plt.pcolormesh(edges, edges, totavg.transpose(), vmin=-0.5, vmax=127.5,
-                        rasterized=True)  # Necessary for quick save and view in PDF
-            plt.title("Average ToT map")
-            plt.xlabel("Col")
-            plt.ylabel("Row")
-            cb = integer_ticks_colorbar()
-            cb.set_label("ToT [25 ns]")
-            set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
-            frontend_names_on_top()
-            pdf.savefig(); plt.clf()
-            # print("ToT map")
-        del tot
+        with np.errstate(all='ignore'):
+            totavg = tot2d / counts2d
+        plt.pcolormesh(tot2d_edges, tot2d_edges, totavg.transpose(),
+                        vmin=-0.5, vmax=127.5, rasterized=True)  # Necessary for quick save and view in PDF
+        plt.title("Average ToT map")
+        plt.xlabel("Col")
+        plt.ylabel("Row")
+        cb = integer_ticks_colorbar()
+        cb.set_label("ToT [25 ns]")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        frontend_names_on_top()
+        pdf.savefig(); plt.clf()
+        # print("ToT map")
 
         # Noisy pixels
         if cfg.get("configuration_in.scan.run_config.scan_id") == "source_scan":
@@ -103,8 +144,8 @@ def main(input_file, overwrite=False, log_tot=False):
             max_hits = scan_time * MAX_RATE
             mask = counts2d > max_hits
             plt.axes((0.125, 0.11, 0.775, 0.72))
-            plt.pcolormesh(edges, edges, 1 * mask.transpose(), vmin=0, vmax=1,
-                           rasterized=True)  # Necessary for quick save and view in PDF
+            plt.pcolormesh(counts2d_edges, counts2d_edges, 1 * mask.transpose(),
+                           vmin=0, vmax=1, rasterized=True)  # Necessary for quick save and view in PDF
             plt.suptitle("Noisy pixels in yellow (ignore this plot if source was used)")
             plt.title(f"Noisy means rate > {MAX_RATE:.3g} Hz")
             plt.xlabel("Col")
@@ -137,7 +178,6 @@ def main(input_file, overwrite=False, log_tot=False):
         # print("Noisy")
 
         # Source positioning
-        counts2d16, edges16, _ = np.histogram2d(hits.col("col"), hits.col("row"), bins=[32, 32], range=[[0, 512], [0, 512]])
         m = np.quantile(counts2d16[counts2d16 > 0], 0.99) * 1.2 if np.any(counts2d > 0) else 1
         cmap = matplotlib.cm.get_cmap("viridis").copy()
         cmap.set_over("r")
