@@ -4,12 +4,13 @@ import os
 import subprocess
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+import numpy as np
 import tables as tb
 
 __all__ = [
     'FRONTENDS', 'get_config_dict', 'split_long_text', 'get_commit',
     'draw_summary', 'set_integer_ticks', 'integer_ticks_colorbar',
-    'frontend_names_on_top', 'groupwise']
+    'frontend_names_on_top', 'groupwise', 'is_single_hit_event']
 
 FRONTENDS = [
     # First col (included), last col (included), name
@@ -160,3 +161,25 @@ def groupwise(iterable, n):
     while len(r):
         yield r
         r = get()
+
+
+def is_single_hit_event(timestamps, window_us=3.2):
+    """Returns a mask that selects hits from single-hit events only.
+
+    An event here is defined as a series of hits happening within a
+    window of window_us microseconds. The timestamp is used to
+    determine the arrival time of the hit, which is very approximate
+    and only works if the hit rate is low (i.e. no noisy pixels!).
+
+    Example usage:
+        f = tb.open_file("..._interpreted.h5")
+        hits = f.root.Dut[:]
+        mask = is_single_hit_event(hits["timestamp"])
+        single_hits = hits[mask]
+    """
+    window = int(window_us * 640)
+    diff = np.diff(np.concatenate(((-2**63,), timestamps, (2**63-1,))))
+    diff_from_previous = diff[:-1]
+    diff_from_next = diff[1:]
+    min_diff = np.minimum(diff_from_next, diff_from_previous)
+    return min_diff > window

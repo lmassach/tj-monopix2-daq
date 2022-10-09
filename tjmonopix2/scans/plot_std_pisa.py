@@ -26,6 +26,7 @@ def main(input_file, overwrite=False, log_tot=False):
         # Prepare histograms
         counts2d = np.zeros((512, 512))
         tot1d = [np.zeros(128) for _ in range(len(FRONTENDS))]
+        tot1d_single_hits = [np.zeros(128) for _ in range(len(FRONTENDS))]
         tot2d = np.zeros((512, 512))
         counts2d16 = np.zeros((32, 32))
 
@@ -39,6 +40,7 @@ def main(input_file, overwrite=False, log_tot=False):
             with np.errstate(all='ignore'):
                 tot = (hits["te"] - hits["le"]) & 0x7f
             fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
+            single_hits_mask = is_single_hit_event(hits["timestamp"])
 
             counts2d_tmp, counts2d_edges, _ = np.histogram2d(
                 hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]])
@@ -49,6 +51,9 @@ def main(input_file, overwrite=False, log_tot=False):
                 tot1d_tmp, tot1d_edges = np.histogram(
                     tot[mask], bins=128, range=[-0.5, 127.5])
                 tot1d[i] += tot1d_tmp
+                tot1d_tmp, tot1d_edges = np.histogram(
+                    tot[single_hits_mask & mask], bins=128, range=[-0.5, 127.5])
+                tot1d_single_hits[i] += tot1d_tmp
                 del tot1d_tmp
 
             tot2d_tmp, tot2d_edges, _  = np.histogram2d(
@@ -97,6 +102,23 @@ def main(input_file, overwrite=False, log_tot=False):
             plt.step((tot1d_edges[1:] + tot1d_edges[:-1]) / 2,
                      hist, where='mid', label=name)
         plt.title("ToT")
+        plt.xlabel("ToT [25 ns]")
+        plt.ylabel("Hits / bin")
+        plt.grid(axis='y')
+        if log_tot:
+            plt.yscale('log')
+            set_integer_ticks(plt.gca().xaxis)
+        else:
+            set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        plt.legend()
+        pdf.savefig(); plt.clf()
+        # print("ToT Hist")
+
+        # Histogram of ToT (single hits)
+        for (_, _, name), hist in zip(FRONTENDS, tot1d_single_hits):
+            plt.step((tot1d_edges[1:] + tot1d_edges[:-1]) / 2,
+                     hist, where='mid', label=name)
+        plt.title("ToT (isolated hits only)")
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")
         plt.grid(axis='y')
