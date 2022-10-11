@@ -69,7 +69,7 @@ def main(input_file, overwrite=False):
 
         # Process one chunk of data at a time
         csz = 2**24
-        for i_first in tqdm(range(0, f.root.Dut.shape[0], csz), unit="chunk"):
+        for i_first in tqdm(range(0, f.root.Dut.shape[0], csz), unit="chunk", disable=f.root.Dut.shape[0]/csz<=1):
             i_last = min(f.root.Dut.shape[0], i_first + csz)
 
             # Load hits
