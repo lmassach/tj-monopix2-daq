@@ -4,7 +4,6 @@ import argparse
 import glob
 from itertools import chain
 import os
-import traceback
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.cm
 import matplotlib.pyplot as plt

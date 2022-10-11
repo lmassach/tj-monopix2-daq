@@ -28,8 +28,8 @@ def main(input_file, overwrite=False):
         # Prepare histogram
         counts = np.zeros((512, 512, 128))
 
-        # Process 100k hits at a time
-        csz = int(1e5)
+        # Process 16M hits at a time
+        csz = 2**24
         n_hits = f.root.Dut.shape[0]
         for i_first in tqdm(range(0, n_hits, csz), unit="chunk", disable=n_hits/csz<=1):
             i_last = min(i_first + csz, n_hits)
@@ -42,41 +42,15 @@ def main(input_file, overwrite=False):
                 del tmp
         del hits
 
-        # Find the position and height of the peak in each pixel
-        peaks = counts.max(axis=2)
+        # Find the position of the peak in each pixel
         max_tot = np.argmax(counts, axis=2)
-        # Find the ToT bins > half of the maximum
-        hm = counts > np.expand_dims(peaks, -1)
-        # Take the number of bins as peak width (FWHM)
-        fwhm = np.count_nonzero(hm, axis=2)  # This assumes the background is very low
-        # Take the average of those bins as the peak center
-        with np.errstate(all='ignore'):
-            center = np.sum(counts * hm, axis=2) / np.count_nonzero(hm, axis=2)
 
-        # Histograms
+        # Peak center distribution
         for fc, lc, name in FRONTENDS:
             plt.hist(max_tot[fc:lc+1,:].reshape(-1), bins=128, range=[0, 128], label=name, rasterized=True)
         plt.xlabel("ToT of max [25 ns]")
         plt.ylabel("Pixels / bin")
         plt.title("ToT bin with the most entries (approx. peak)")
-        plt.legend()
-        plt.grid()
-        pdf.savefig(); plt.clf()
-
-        for fc, lc, name in FRONTENDS:
-            plt.hist(center[fc:lc+1,:].reshape(-1), bins=128, range=[0, 128], label=name, rasterized=True)
-        plt.xlabel("Peak center [25 ns]")
-        plt.ylabel("Pixels / bin")
-        plt.title("Peak center")
-        plt.legend()
-        plt.grid()
-        pdf.savefig(); plt.clf()
-
-        for fc, lc, name in FRONTENDS:
-            plt.hist(fwhm[fc:lc+1,:].reshape(-1), bins=128, range=[0, 128], label=name, rasterized=True)
-        plt.xlabel("Peak FWHM [25 ns]")
-        plt.ylabel("Pixels / bin")
-        plt.title("Peak width (FWHM)")
         plt.legend()
         plt.grid()
         pdf.savefig(); plt.clf()
