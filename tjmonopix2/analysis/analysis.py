@@ -153,7 +153,11 @@ class Analysis(object):
 
             with tb.open_file(self.analyzed_data_file, 'w', title=in_file.title) as out_file:
                 out_file.create_group(out_file.root, name='configuration_in', title='Configuration after scan step')
-                out_file.copy_children(in_file.root.configuration_out, out_file.root.configuration_in, recursive=True)
+                try:
+                    out_file.copy_children(in_file.root.configuration_out, out_file.root.configuration_in, recursive=True)
+                except tb.NoSuchNodeError:
+                    self.log.warning("Missing configuration_out (incomplete scan?)")
+                    out_file.copy_children(in_file.root.configuration_in, out_file.root.configuration_in, recursive=True)
 
                 if self.store_hits:
                     hit_table = self._create_hit_table(out_file, dtype=au.hit_dtype)
