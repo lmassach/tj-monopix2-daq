@@ -33,14 +33,19 @@ def get_config_dict(h5_file):
             return get_config_dict(f)
     res = {}
     for cfg_path in ['configuration_in', 'configuration_out']:
-        for node in h5_file.walk_nodes(f"/{cfg_path}"):
-            if isinstance(node, tb.Table):
-                directory = node._v_pathname.strip("/").replace("/", ".")
-                try:
-                    for a, b in node[:]:
-                        res[f"{directory}.{str(a, encoding='utf8')}"] = str(b, encoding='utf8')
-                except Exception:
-                    pass  # print("Could not read node", node._v_pathname)
+        try:
+            for node in h5_file.walk_nodes(f"/{cfg_path}"):
+                if isinstance(node, tb.Table):
+                    directory = node._v_pathname.strip("/").replace("/", ".")
+                    try:
+                        for a, b in node[:]:
+                            res[f"{directory}.{str(a, encoding='utf8')}"] = str(b, encoding='utf8')
+                    except Exception:
+                        pass  # print("Could not read node", node._v_pathname)
+        except tb.NoSuchNodeError:
+            print("WARNING Input file does not have", cfg_path, "(incomplete acquisition?)")
+        except Exception:
+            print("WARNING Could not read", cfg_path, "from input file (incomplete acquisition?)")
     return res
 
 
