@@ -13,70 +13,86 @@ from tqdm import tqdm
 from plot_utils_pisa import *
 
 
-def main(input_file, overwrite=False, log_tot=False):
-    output_file = os.path.splitext(input_file)[0] + ".pdf"
+def main(input_files, overwrite=False, log_tot=False, output_file=None):
+    if output_file is None:
+        output_file = os.path.splitext(input_files[0])[0] + ".pdf"
     if os.path.isfile(output_file) and not overwrite:
         return
-    print("Plotting", input_file)
-    with tb.open_file(input_file) as f:
-        cfg = get_config_dict(f)
 
-        n_hits = f.root.Dut.shape[0]
+    # Prepare histograms
+    counts2d = np.zeros((512, 512))
+    tot1d = [np.zeros(128) for _ in range(len(FRONTENDS))]
+    tot1d_single_hits = [np.zeros(128) for _ in range(len(FRONTENDS))]
+    tot2d = np.zeros((512, 512))
+    counts2d16 = np.zeros((32, 32))
+    cfg = []
+    n_total_hits = 0
 
-        # Prepare histograms
-        counts2d = np.zeros((512, 512))
-        tot1d = [np.zeros(128) for _ in range(len(FRONTENDS))]
-        tot1d_single_hits = [np.zeros(128) for _ in range(len(FRONTENDS))]
-        tot2d = np.zeros((512, 512))
-        counts2d16 = np.zeros((32, 32))
+    for input_file in tqdm(input_files, disable=len(input_files)<2):
+        print("Processing", input_file)
+        with tb.open_file(input_file) as f:
+            cfg.append(get_config_dict(f))
 
-        # Process one chunk of data at a time
-        csz = 2**24
-        for i_first in tqdm(range(0, f.root.Dut.shape[0], csz), unit="chunk"):
-            i_last = min(f.root.Dut.shape[0], i_first + csz)
+            n_hits = f.root.Dut.shape[0]
+            n_total_hits += n_hits
 
-            # Load hits
-            hits = f.root.Dut[i_first:i_last]
-            with np.errstate(all='ignore'):
-                tot = (hits["te"] - hits["le"]) & 0x7f
-            fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
-            single_hits_mask = is_single_hit_event(hits["timestamp"])
+            # Process one chunk of data at a time
+            csz = 2**24
+            for i_first in tqdm(range(0, f.root.Dut.shape[0], csz), unit="chunk", disable=f.root.Dut.shape[0]/csz<=1):
+                i_last = min(f.root.Dut.shape[0], i_first + csz)
 
-            counts2d_tmp, counts2d_edges, _ = np.histogram2d(
-                hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]])
-            counts2d += counts2d_tmp
-            del counts2d_tmp
+                # Load hits
+                hits = f.root.Dut[i_first:i_last]
+                with np.errstate(all='ignore'):
+                    tot = (hits["te"] - hits["le"]) & 0x7f
+                fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
+                single_hits_mask = is_single_hit_event(hits["timestamp"])
 
-            for i, mask in enumerate(fe_masks):
-                tot1d_tmp, tot1d_edges = np.histogram(
-                    tot[mask], bins=128, range=[-0.5, 127.5])
-                tot1d[i] += tot1d_tmp
-                tot1d_tmp, tot1d_edges = np.histogram(
-                    tot[single_hits_mask & mask], bins=128, range=[-0.5, 127.5])
-                tot1d_single_hits[i] += tot1d_tmp
-                del tot1d_tmp
+                counts2d_tmp, counts2d_edges, _ = np.histogram2d(
+                    hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]])
+                counts2d += counts2d_tmp
+                del counts2d_tmp
 
-            tot2d_tmp, tot2d_edges, _  = np.histogram2d(
-                hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]],
-                weights=tot)
-            tot2d += tot2d_tmp
-            del tot2d_tmp
+                for i, mask in enumerate(fe_masks):
+                    tot1d_tmp, tot1d_edges = np.histogram(
+                        tot[mask], bins=128, range=[-0.5, 127.5])
+                    tot1d[i] += tot1d_tmp
+                    tot1d_tmp, tot1d_edges = np.histogram(
+                        tot[single_hits_mask & mask], bins=128, range=[-0.5, 127.5])
+                    tot1d_single_hits[i] += tot1d_tmp
+                    del tot1d_tmp
 
-            counts2d16_tmp, edges16, _ = np.histogram2d(
-                hits["col"], hits["row"], bins=[32, 32], range=[[0, 512], [0, 512]])
-            counts2d16 += counts2d16_tmp
-            del counts2d16_tmp
+                tot2d_tmp, tot2d_edges, _  = np.histogram2d(
+                    hits["col"], hits["row"], bins=[512, 512], range=[[0, 512], [0, 512]],
+                    weights=tot)
+                tot2d += tot2d_tmp
+                del tot2d_tmp
 
-            del hits, tot, fe_masks
+                counts2d16_tmp, edges16, _ = np.histogram2d(
+                    hits["col"], hits["row"], bins=[32, 32], range=[[0, 512], [0, 512]])
+                counts2d16 += counts2d16_tmp
+                del counts2d16_tmp
+
+                del hits, tot, fe_masks
 
     with PdfPages(output_file) as pdf:
         plt.figure(figsize=(6.4, 4.8))
 
-        draw_summary(input_file, cfg)
-        pdf.savefig(); plt.clf()
+        if len(input_files) > 1:
+            plt.annotate(
+                split_long_text(
+                    "This file was generated by joining the following\n\n"
+                    + "\n".join(input_files)
+                    ), (0.5, 0.5), ha='center', va='center')
+            plt.gca().set_axis_off()
+            pdf.savefig(); plt.clf()
+
+        for input_file, c in zip(input_files, cfg):
+            draw_summary(input_file, c)
+            pdf.savefig(); plt.clf()
         # print("Summary")
 
-        if n_hits == 0:
+        if n_total_hits == 0:
             plt.annotate("No hits recorded!", (0.5, 0.5), ha='center', va='center')
             plt.gca().set_axis_off()
             pdf.savefig(); plt.clf()
@@ -160,9 +176,14 @@ def main(input_file, overwrite=False, log_tot=False):
         # print("ToT map")
 
         # Noisy pixels
-        if cfg.get("configuration_in.scan.run_config.scan_id") == "source_scan":
+        if all(c.get("configuration_in.scan.run_config.scan_id") == "source_scan" for c in cfg):
             MAX_RATE = 1  # Above this rate [Hz] pixels are marked noisy
-            scan_time = float(cfg["configuration_in.scan.scan_config.scan_time"])
+            scan_time = 0
+            for i, c in enumerate(cfg):
+                try:
+                    scan_time += float(c["configuration_in.scan.scan_config.scan_time"])
+                except Exception:
+                    print(f"WARNING: could not determine scan time from {input_files[i]}")
             max_hits = scan_time * MAX_RATE
             mask = counts2d > max_hits
             plt.axes((0.125, 0.11, 0.775, 0.72))
@@ -225,6 +246,8 @@ if __name__ == "__main__":
         help="The _interpreted.h5 file(s). If not given, looks in output_data/module_0/chip_0.")
     parser.add_argument("-f", "--overwrite", action="store_true",
                         help="Overwrite plots when already present.")
+    parser.add_argument("-j", "--join", metavar="OUTPUT_FILE.PDF", default=None,
+                        help="Join all input files and put results in the given PDF.")
     parser.add_argument("--log-tot", action="store_true",
                         help="Use log scale for ToT.")
     args = parser.parse_args()
@@ -237,8 +260,11 @@ if __name__ == "__main__":
         files.extend(glob.glob("output_data/module_0/chip_0/*_interpreted.h5"))
     files.sort()
 
-    for fp in tqdm(files):
-        try:
-            main(fp, args.overwrite, args.log_tot)
-        except Exception:
-            print(traceback.format_exc())
+    if args.join is None:
+        for fp in tqdm(files):
+            try:
+                main([fp], args.overwrite, args.log_tot)
+            except Exception:
+                print(traceback.format_exc())
+    else:
+        main(files, args.overwrite, args.log_tot, args.join)

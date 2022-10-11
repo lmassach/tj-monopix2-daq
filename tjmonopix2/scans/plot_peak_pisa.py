@@ -31,7 +31,7 @@ def main(input_file, overwrite=False):
         # Process 100k hits at a time
         csz = int(1e5)
         n_hits = f.root.Dut.shape[0]
-        for i_first in tqdm(range(0, n_hits, csz), unit="chunk"):
+        for i_first in tqdm(range(0, n_hits, csz), unit="chunk", disable=n_hits/csz<=1):
             i_last = min(i_first + csz, n_hits)
             hits = f.root.Dut[i_first:i_last]
             with np.errstate(all='ignore'):
