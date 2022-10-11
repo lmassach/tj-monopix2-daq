@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plots the results of scan_threshold (HistOcc and HistToT not required)."""
+"""Plots the results of multiple scan_threshold from the .npz files produced by plot_scurve_pisa.py."""
 import argparse
 import glob
 from itertools import chain
@@ -16,12 +16,6 @@ from plot_utils_pisa import *
 
 VIRIDIS_WHITE_UNDER = matplotlib.cm.get_cmap('viridis').copy()
 VIRIDIS_WHITE_UNDER.set_under('w')
-
-
-@np.errstate(all='ignore')
-def average(a, axis=None, weights=1, invalid=np.NaN):
-    """Like np.average, but returns `invalid` instead of crashing if the sum of weights is zero."""
-    return np.nan_to_num(np.sum(a * weights, axis=axis).astype(float) / np.sum(weights, axis=axis).astype(float), nan=invalid)
 
 
 def main(input_file, overwrite=False):
@@ -194,79 +188,6 @@ def main(input_file, overwrite=False):
         w = np.maximum(0, 0.5 - np.abs(occupancy - 0.5))
         threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
 
-        # Threshold hist
-        m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
-        m2 = int(min(charge_dac_range[1], threshold_DAC.max() + 2))
-        for i, (fc, lc, name) in enumerate(FRONTENDS):
-            if fc >= col_stop or lc < col_start:
-                continue
-            fc = max(0, fc - col_start)
-            lc = min(col_n - 1, lc - col_start)
-            th = threshold_DAC[fc:lc+1,:]
-            th_mean = ufloat(np.mean(th[th>0]), np.std(th[th>0], ddof=1))
-            plt.hist(th.reshape(-1), bins=m2-m1, range=[m1, m2],
-                     label=f"{name} ${th_mean:L}$", histtype='step', color=f"C{i}")
-        plt.title(subtitle)
-        plt.suptitle("Threshold distribution")
-        plt.xlabel("Threshold [DAC]")
-        plt.ylabel("Pixels / bin")
-        set_integer_ticks(plt.gca().yaxis)
-        plt.legend()
-        plt.grid(axis='y')
-        pdf.savefig(); plt.clf()
-
-        # Threshold map
-        plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(),
-                       rasterized=True)  # Necessary for quick save and view in PDF
-        plt.title(subtitle)
-        plt.suptitle("Threshold map")
-        plt.xlabel("Column")
-        plt.ylabel("Row")
-        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
-        cb = plt.colorbar()
-        cb.set_label("Threshold [DAC]")
-        frontend_names_on_top()
-        pdf.savefig(); plt.clf()
-
-        # Compute the noise (the width of the up-slope of the s-curve)
-        # as a variance with the weights above
-        noise_DAC = np.sqrt(average((occupancy_charges - np.expand_dims(threshold_DAC, -1))**2, axis=2, weights=w, invalid=0))
-        del w
-
-        # Noise hist
-        m = int(np.ceil(noise_DAC.max(initial=0, where=np.isfinite(noise_DAC)))) + 1
-        for i, (fc, lc, name) in enumerate(FRONTENDS):
-            if fc >= col_stop or lc < col_start:
-                continue
-            fc = max(0, fc - col_start)
-            lc = min(col_n - 1, lc - col_start)
-            ns = noise_DAC[fc:lc+1,:]
-            noise_mean = ufloat(np.mean(ns[ns>0]), np.std(ns[ns>0], ddof=1))
-            plt.hist(ns.reshape(-1), bins=min(20*m, 100), range=[0, m],
-                     label=f"{name} ${noise_mean:L}$", histtype='step', color=f"C{i}")
-        plt.title(subtitle)
-        plt.suptitle(f"Noise (width of s-curve slope) distribution")
-        plt.xlabel("Noise [DAC]")
-        plt.ylabel("Pixels / bin")
-        set_integer_ticks(plt.gca().yaxis)
-        plt.grid(axis='y')
-        plt.legend()
-        pdf.savefig(); plt.clf()
-
-        # Noise map
-        plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], noise_DAC.transpose(),
-                       rasterized=True)  # Necessary for quick save and view in PDF
-        plt.title(subtitle)
-        plt.suptitle("Noise (width of s-curve slope) map")
-        plt.xlabel("Column")
-        plt.ylabel("Row")
-        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
-        cb = plt.colorbar()
-        cb.set_label("Noise [DAC]")
-        frontend_names_on_top()
-        pdf.savefig(); plt.clf()
 
         # Time since previous hit vs ToT
         for (fc, lc, name), hist in zip(chain([(0, 511, 'All FEs')], FRONTENDS), dt_tot_hist):
@@ -311,19 +232,16 @@ def main(input_file, overwrite=False):
         noise_data = np.full((512, 512), np.nan)
         noise_data[col_start:col_stop,row_start:row_stop] = noise_DAC
         np.savez_compressed(
-            os.path.splitext(output_file)[0] + ".npz",
+            os.path.splitext(output_file)[0] + ".pdf",
             thresholds=threshold_data,
             noise=noise_data)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "input_file", nargs="*",
-        help="The _threshold_scan_interpreted.h5 file(s)."
-             " If not given, looks in output_data/module_0/chip_0.")
-    parser.add_argument("-f", "--overwrite", action="store_true",
-                        help="Overwrite plots when already present.")
+    parser.add_argument("output_file", help="The output PDF.")
+    parser.add_argument("input_file", nargs="+",
+                        help="The _threshold_scan_interpreted_scurve.npz file(s).")
     args = parser.parse_args()
 
     files = []
@@ -334,8 +252,91 @@ if __name__ == "__main__":
         files.extend(glob.glob("output_data/module_0/chip_0/*_threshold_scan_interpreted.h5"))
     files.sort()
 
+    # Load results from NPZ files
+    thresholds = np.full((512, 512), np.nan)
+    noise = np.full((512, 512), np.nan)
     for fp in tqdm(files, unit="file"):
-        try:
-            main(fp, args.overwrite)
-        except Exception:
-            print(traceback.format_exc())
+        with np.load(fp) as data:
+            overwritten = (~np.isnan(thresholds)) & (~np.isnan(data['thresholds']))
+            n_overwritten = np.count_nonzero(overwritten)
+            if n_overwritten:
+                print("WARNING Multiple values of threshold for the same pixel(s)")
+                print(f"    count={n_overwritten}, file={fp}")
+            thresholds = np.where(np.isnan(thresholds), data['thresholds'], thresholds)
+
+            overwritten = (~np.isnan(noise)) & (~np.isnan(data['noise']))
+            n_overwritten = np.count_nonzero(overwritten)
+            if n_overwritten:
+                print("WARNING Multiple values of threshold for the same pixel(s)")
+                print(f"    count={n_overwritten}, file={fp}")
+            noise = np.where(np.isnan(noise), data['noise'], noise)
+
+    # Do the plotting
+    with PdfPages(args.output_file) as pdf:
+        plt.figure(figsize=(6.4, 4.8))
+
+        plt.annotate(
+            split_long_text(
+                "This file was generated by joining the following\n\n"
+                + "\n".join(files)
+                ), (0.5, 0.5), ha='center', va='center')
+        plt.gca().set_axis_off()
+        pdf.savefig(); plt.clf()
+
+        # Threshold hist
+        m1 = int(max(0, thresholds.min() - 2))
+        m2 = int(min(100, thresholds.max() + 2))
+        for i, (fc, lc, name) in enumerate(FRONTENDS):
+            th = thresholds[fc:lc+1,:]
+            th_mean = ufloat(np.mean(th[th>0]), np.std(th[th>0], ddof=1))
+            plt.hist(th.reshape(-1), bins=m2-m1, range=[m1, m2],
+                     label=f"{name} ${th_mean:L}$", histtype='step', color=f"C{i}")
+        plt.suptitle("Threshold distribution")
+        plt.xlabel("Threshold [DAC]")
+        plt.ylabel("Pixels / bin")
+        set_integer_ticks(plt.gca().yaxis)
+        plt.legend()
+        plt.grid(axis='y')
+        pdf.savefig(); plt.clf()
+
+        # Threshold map
+        plt.axes((0.125, 0.11, 0.775, 0.72))
+        edges = np.linspace(0, 512, 513, endpoint=True)
+        plt.pcolormesh(edges, edges, thresholds.transpose(),
+                       rasterized=True)  # Necessary for quick save and view in PDF
+        plt.suptitle("Threshold map")
+        plt.xlabel("Column")
+        plt.ylabel("Row")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        cb = plt.colorbar()
+        cb.set_label("Threshold [DAC]")
+        frontend_names_on_top()
+        pdf.savefig(); plt.clf()
+
+        # Noise hist
+        m = int(np.ceil(noise.max(initial=0, where=np.isfinite(noise)))) + 1
+        for i, (fc, lc, name) in enumerate(FRONTENDS):
+            ns = noise[fc:lc+1,:]
+            noise_mean = ufloat(np.mean(ns[ns>0]), np.std(ns[ns>0], ddof=1))
+            plt.hist(ns.reshape(-1), bins=min(20*m, 100), range=[0, m],
+                     label=f"{name} ${noise_mean:L}$", histtype='step', color=f"C{i}")
+        plt.suptitle(f"Noise (width of s-curve slope) distribution")
+        plt.xlabel("Noise [DAC]")
+        plt.ylabel("Pixels / bin")
+        set_integer_ticks(plt.gca().yaxis)
+        plt.grid(axis='y')
+        plt.legend()
+        pdf.savefig(); plt.clf()
+
+        # Noise map
+        plt.axes((0.125, 0.11, 0.775, 0.72))
+        plt.pcolormesh(edges, edges, noise.transpose(),
+                       rasterized=True)  # Necessary for quick save and view in PDF
+        plt.suptitle("Noise (width of s-curve slope) map")
+        plt.xlabel("Column")
+        plt.ylabel("Row")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        cb = plt.colorbar()
+        cb.set_label("Noise [DAC]")
+        frontend_names_on_top()
+        pdf.savefig(); plt.clf()
