@@ -97,24 +97,32 @@ def main(input_files, overwrite=False, pixels=(0, -1, 0, -1), output_file=None):
                 tot = counts[col,row,:]
             tot_cut = tot[MIN_TOT_CUT:]
             try:
-                popt, pcov = curve_fit(
-                    fit_func, x_cut, tot_cut, p0=(
-                        np.argmax(tot_cut), 2, np.max(tot_cut),
-                        14, 12, tot_cut[0]))
+                peak_pos = np.argmax(tot_cut)
+                p0 = (peak_pos, 0.5, np.max(tot_cut), 14, 12, tot_cut[peak_pos-10:peak_pos-6].mean())
+                popt, pcov = curve_fit(fit_func, x_cut, tot_cut, p0=p0)
             except Exception:
                 popt = np.full(6, np.nan)
                 pcov = np.full((6, 6), np.nan)
                 n_failed_fit += 1
             pstd = np.sqrt(pcov.diagonal())
-            if col is None or i % 8192 == 1:
-                fit_res = [
-                    f"${n}={ufloat(m,s):L}$"
-                    for m, s, n in zip(popt, pstd, ["\\mu", "\\sigma", "h_{sig}", "c", "w", "h_{bkg}"])]
+            if col is None or i % 8192 == 1 or (np.isnan(popt[0]) and n_failed_fit < 5):
                 plt.step(x, tot, where='mid', lw=2, label='Data')
-                plt.plot(x, fit_func(x, *popt), label='Total fit')
-                plt.plot(x, popt[2] * gaus(x, *popt[:2]), '--', label='Gaussian peak\n' + "\n".join(fit_res[:3]))
-                plt.plot(x, popt[5] * shoulder(x, *popt[3:5]), '--', label='Background\n' + "\n".join(fit_res[3:]))
-                plt.title("Fit to " + ("all pixels" if col is None else str((col, row))))
+                if np.isnan(popt[0]):
+                    fit_res = [
+                        f"${n}={m:.3g}$"
+                        for m, n in zip(p0, ["\\mu", "\\sigma", "h_{sig}", "c", "w", "h_{bkg}"])]
+                    plt.plot(x, fit_func(x, *p0), label='Initial fit parameters')
+                    plt.plot(x, p0[2] * gaus(x, *p0[:2]), '--', label='Gaussian peak\n' + "\n".join(fit_res[:3]))
+                    plt.plot(x, p0[5] * shoulder(x, *p0[3:5]), '--', label='Background\n' + "\n".join(fit_res[3:]))
+                else:
+                    fit_res = [
+                        f"${n}={ufloat(m,s):L}$"
+                        for m, s, n in zip(popt, pstd, ["\\mu", "\\sigma", "h_{sig}", "c", "w", "h_{bkg}"])]
+                    plt.plot(x, fit_func(x, *popt), label='Total fit')
+                    plt.plot(x, popt[2] * gaus(x, *popt[:2]), '--', label='Gaussian peak\n' + "\n".join(fit_res[:3]))
+                    plt.plot(x, popt[5] * shoulder(x, *popt[3:5]), '--', label='Background\n' + "\n".join(fit_res[3:]))
+                the_pixel = "all pixels" if col is None else str((col, row))
+                plt.title(f"{the_pixel} spectrum (fit failed)" if np.isnan(popt[0]) else f"Fit to {the_pixel}")
                 plt.xlabel("ToT [25 ns]")
                 plt.ylabel("Counts / bin")
                 plt.legend()
@@ -130,7 +138,7 @@ def main(input_files, overwrite=False, pixels=(0, -1, 0, -1), output_file=None):
         plt.xlabel("Peak $\\mu$ [25 ns]")
         plt.ylabel("Pixels / bin")
         plt.suptitle("Peak center distribution")
-        plt.title(f"Fit failed for {n_failed_fit} pixels ({n_failed_fit/(n_pix-1):.2%})")
+        plt.title(f"Fit failed for {n_failed_fit} pixels ({n_failed_fit/max(1,(n_pix-1)):.2%})")
         plt.legend()
         plt.grid()
         pdf.savefig(); plt.clf()
@@ -142,7 +150,7 @@ def main(input_files, overwrite=False, pixels=(0, -1, 0, -1), output_file=None):
         plt.xlabel("Peak $\\mu$ [25 ns]")
         plt.ylabel("Pixels / bin")
         plt.suptitle("Peak center distribution")
-        plt.title(f"Fit failed for {n_failed_fit} pixels ({n_failed_fit/(n_pix-1):.2%})")
+        plt.title(f"Fit failed for {n_failed_fit} pixels ({n_failed_fit/max(1,(n_pix-1)):.2%})")
         plt.legend()
         plt.grid()
         pdf.savefig(); plt.clf()
@@ -154,7 +162,7 @@ def main(input_files, overwrite=False, pixels=(0, -1, 0, -1), output_file=None):
         plt.xlabel("Peak $\\sigma$ [25 ns]")
         plt.ylabel("Pixels / bin")
         plt.suptitle("Peak width distribution")
-        plt.title(f"Fit failed for {n_failed_fit} pixels ({n_failed_fit/(n_pix-1):.2%})")
+        plt.title(f"Fit failed for {n_failed_fit} pixels ({n_failed_fit/max(1,(n_pix-1)):.2%})")
         plt.legend()
         plt.grid()
         pdf.savefig(); plt.clf()
