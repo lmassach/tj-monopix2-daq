@@ -161,7 +161,7 @@ def main(input_file, overwrite=False, pixels=[0, 511, 0, 511]):
                 pcov = np.full((4, 4), np.nan)
                 n_failed_fit += 1
             pstd = np.sqrt(pcov.diagonal())
-            if i % 8192 == 1 or (np.isnan(popt[0]) and n_failed_fit < 5):
+            if i % max(2, n_pix//10) == 0 or (np.isnan(popt[0]) and n_failed_fit < 5):
                 plt.plot(charge_dac_values, tot, '.', label='Data')
                 if np.isnan(popt[0]):
                     fit_res = "\n".join(f"${n}={m:.3g}$" for m, n in zip(p0, "abct"))

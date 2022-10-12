@@ -105,7 +105,7 @@ def main(input_files, overwrite=False, pixels=(0, -1, 0, -1), output_file=None):
                 pcov = np.full((6, 6), np.nan)
                 n_failed_fit += 1
             pstd = np.sqrt(pcov.diagonal())
-            if col is None or i % 8192 == 1 or (np.isnan(popt[0]) and n_failed_fit < 5):
+            if col is None or i % max(2, n_pix//10) == 1 or (np.isnan(popt[0]) and n_failed_fit < 5):
                 plt.step(x, tot, where='mid', lw=2, label='Data')
                 if np.isnan(popt[0]):
                     fit_res = [
