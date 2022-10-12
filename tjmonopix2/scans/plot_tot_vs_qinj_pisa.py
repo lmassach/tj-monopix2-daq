@@ -169,9 +169,6 @@ def main(input_file, overwrite=False, pixels=[0, 511, 0, 511]):
                              label=f'Initial fit parameters\n{fit_res}')
                     ylim = plt.ylim()
                     plt.plot(charge_dac_values, p0[0]*charge_dac_values + p0[1], '--')
-                    msk = charge_dac_values > p0[3]
-                    if np.any(msk):
-                        plt.plot(charge_dac_values[msk], -p0[2] / (charge_dac_values[msk] - p0[3]), '--')
                     plt.ylim(*ylim)
                 else:
                     fit_res = "\n".join(f"${n}={ufloat(m,s):L}$" for m, s, n in zip(popt, pstd, "abct"))
@@ -179,9 +176,6 @@ def main(input_file, overwrite=False, pixels=[0, 511, 0, 511]):
                              label=f'Fit\n{fit_res}')
                     ylim = plt.ylim()
                     plt.plot(charge_dac_values, popt[0]*charge_dac_values + popt[1], '--')
-                    msk = charge_dac_values > popt[3]
-                    if np.any(msk):
-                        plt.plot(charge_dac_values[msk], -popt[2] / (charge_dac_values[msk] - popt[3]), '--')
                     plt.ylim(*ylim)
                 the_pixel = "all pixels" if col is None else str((col, row))
                 plt.title(f"{the_pixel} (fit failed)" if np.isnan(popt[0]) else f"Fit to {the_pixel}")
