@@ -17,15 +17,9 @@ NOMINAL_C_INJ = 10.1  # e- / DAC
 FE55_CHARGE = 1616  # e-
 
 
-# @np.errstate(all='ignore')
-# def tot(dac, a, b, c, t):
-#     return np.where(dac < t, 0, np.maximum(0, a*dac + b - c/(dac-t)))
-
-
 @np.errstate(all='ignore')
-def dac(tot, a, b, c, t):
-    delta = -b + a*t + tot
-    return (delta + np.sqrt(delta*delta + 4*a * (c + b*t - t*tot))) / (2*a)
+def dac(tot, a, c, t):
+    return (a*t + tot + np.sqrt(a*t*a*t - 2*a*t*tot * tot*tot + 4*a*c)) / (2*a)
 
 
 def load_without_overwriting(input_data, output_array, name):
@@ -68,7 +62,6 @@ if __name__ == "__main__":
     mus = np.full((512, 512), np.nan)  # Fe55 peak center and width
     # sigmas = np.full((512, 512), np.nan)
     a = np.full((512, 512), np.nan)  # ToT-DAC conversion function parameters
-    b = np.full((512, 512), np.nan)
     c = np.full((512, 512), np.nan)
     t = np.full((512, 512), np.nan)
     for fp in tqdm(files, unit="file"):
@@ -79,7 +72,6 @@ if __name__ == "__main__":
             except Exception:
                 try:
                     load_without_overwriting(data, a, 'a')
-                    load_without_overwriting(data, b, 'b')
                     load_without_overwriting(data, c, 'c')
                     load_without_overwriting(data, t, 't')
                 except Exception:
@@ -105,8 +97,6 @@ if __name__ == "__main__":
         pdf.savefig(); plt.clf()
         map_plot(a, "$a$ parameter", "$a$")
         pdf.savefig(); plt.clf()
-        map_plot(b, "$b$ parameter", "$b$")
-        pdf.savefig(); plt.clf()
         map_plot(c, "$c$ parameter", "$c$")
         pdf.savefig(); plt.clf()
         map_plot(t, "$t$ parameter", "$t$")
@@ -114,9 +104,7 @@ if __name__ == "__main__":
 
         c_inj = np.full((512, 512), np.nan)
         with np.errstate(all='ignore'):
-            # for px in product(range(512), range(512)):
-            #     c_inj[px] = FE55_CHARGE / (dac(mus[px], a[px], b[px], c[px], t[px]) - args.shift)
-            c_inj = FE55_CHARGE / (dac(mus, a, b, c, t) - args.shift)
+            c_inj = FE55_CHARGE / (dac(mus, a, c, t) - args.shift)
 
         # Cinj histogram
         m1 = max(0, np.nan_to_num(c_inj, posinf=0, neginf=0).min() - 1)

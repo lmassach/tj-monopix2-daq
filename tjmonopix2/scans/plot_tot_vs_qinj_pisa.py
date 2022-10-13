@@ -16,8 +16,8 @@ from plot_utils_pisa import *
 
 
 @np.errstate(all='ignore')
-def fit_func(x, a, b, c, t):
-    return np.where(x < t, 0, np.maximum(0, a*x + b - c/(x-t)))
+def fit_func(x, a, c, t):
+    return np.where(x < t, 0, np.maximum(0, a*x - c/(x-t)))
 
 
 def main(input_file, overwrite=False, pixels=[0, 511, 0, 511]):
@@ -136,7 +136,6 @@ def main(input_file, overwrite=False, pixels=[0, 511, 0, 511]):
         row_last = min(row_last, row_stop - 1)
         # Results storage
         a = np.full((512, 512), np.nan)
-        b = np.full((512, 512), np.nan)
         c = np.full((512, 512), np.nan)
         t = np.full((512, 512), np.nan)
         n_pix = 1 + max(0, (col_last + 1 - col_first) * (row_last + 1 - row_first))
@@ -150,33 +149,18 @@ def main(input_file, overwrite=False, pixels=[0, 511, 0, 511]):
                 n_broken_pix += 1
                 continue  # Skip broken pixels in last 16 cols
             try:
-                th = charge_dac_values[np.argmax(tot > 0)]
-                max_tot = np.max(tot)
-                max_pos = charge_dac_values[np.argmax(tot)]
-                a0 = max_tot / (max_pos - th)
-                p0 = (a0, max_tot - a0 * max_pos + 10, 200, th)
-                popt, pcov = curve_fit(fit_func, charge_dac_values, tot, p0=p0)
+                popt, pcov = curve_fit(fit_func, charge_dac_values, tot)
             except Exception:
-                popt = np.full(4, np.nan)
-                pcov = np.full((4, 4), np.nan)
+                popt = np.full(3, np.nan)
+                pcov = np.full((3, 3), np.nan)
                 n_failed_fit += 1
             pstd = np.sqrt(pcov.diagonal())
             if i % max(2, n_pix//10) == 0 or (np.isnan(popt[0]) and n_failed_fit < 5):
                 plt.plot(charge_dac_values, tot, '.', label='Data')
-                if np.isnan(popt[0]):
-                    fit_res = "\n".join(f"${n}={m:.3g}$" for m, n in zip(p0, "abct"))
-                    plt.plot(charge_dac_values, fit_func(charge_dac_values, *p0),
-                             label=f'Initial fit parameters\n{fit_res}')
-                    ylim = plt.ylim()
-                    plt.plot(charge_dac_values, p0[0]*charge_dac_values + p0[1], '--')
-                    plt.ylim(*ylim)
-                else:
-                    fit_res = "\n".join(f"${n}={ufloat(m,s):L}$" for m, s, n in zip(popt, pstd, "abct"))
+                if not np.isnan(popt[0]):
+                    fit_res = "\n".join(f"${n}={ufloat(m,s):L}$" for m, s, n in zip(popt, pstd, "act"))
                     plt.plot(charge_dac_values, fit_func(charge_dac_values, *popt),
                              label=f'Fit\n{fit_res}')
-                    ylim = plt.ylim()
-                    plt.plot(charge_dac_values, popt[0]*charge_dac_values + popt[1], '--')
-                    plt.ylim(*ylim)
                 the_pixel = "all pixels" if col is None else str((col, row))
                 plt.title(f"{the_pixel} (fit failed)" if np.isnan(popt[0]) else f"Fit to {the_pixel}")
                 plt.xlabel("Injected charge [DAC]")
@@ -184,17 +168,15 @@ def main(input_file, overwrite=False, pixels=[0, 511, 0, 511]):
                 plt.legend()
                 pdf.savefig(); plt.clf()
             a[col,row] = popt[0]
-            b[col,row] = popt[1]
-            c[col,row] = popt[2]
-            t[col,row] = popt[3]
+            c[col,row] = popt[1]
+            t[col,row] = popt[2]
 
         # Parameters distribution
         bins_ranges = {
-            'a': (50, [0, 0.3]),
-            'b': (50, [-10, 25]),
-            'c': (50, [0, 1000]),
-            't': (50, [0, 50])}
-        for name, unit, data in zip("abct", ["25 ns / DAC", "25 ns", "25 ns DAC", "DAC"], (a, b, c, t)):
+            'a': (150, [0, 0.5]),
+            'c': (150, [0, 250]),
+            't': (150, [0, 100])}
+        for name, unit, data in zip("act", ["25 ns / DAC", "25 ns DAC", "DAC"], (a, c, t)):
             for i, (fc, lc, fe_name) in enumerate(FRONTENDS):
                 if fc > col_last or lc < col_first:
                     continue
@@ -211,12 +193,12 @@ def main(input_file, overwrite=False, pixels=[0, 511, 0, 511]):
             plt.grid()
             pdf.savefig(); plt.clf()
 
-        for (name1, data1), (name2, data2) in combinations(zip("abct", (a, b, c, t)), 2):
+        for (name1, data1), (name2, data2) in combinations(zip("act", (a, c, t)), 2):
             b1, r1 = bins_ranges[name1]
             b2, r2 = bins_ranges[name2]
+            mask = np.isfinite(data1) * np.isfinite(data2)
             plt.hist2d(
-                data1[col_first:col_last+1,row_first:row_last+1].reshape(-1),
-                data2[col_first:col_last+1,row_first:row_last+1].reshape(-1),
+                data1[mask].reshape(-1), data2[mask].reshape(-1),
                 bins=[b1, b2], range=[r1, r2], rasterized=True, cmin=0)
             plt.title(f"Combined distribution of ${name1}$ and ${name2}$")
             plt.xlabel(name1)
@@ -228,7 +210,7 @@ def main(input_file, overwrite=False, pixels=[0, 511, 0, 511]):
         # Save fit results
         np.savez_compressed(
             os.path.splitext(output_file)[0] + ".npz",
-            a=a, b=b, c=c, t=t)
+            a=a, c=c, t=t)
 
 
 if __name__ == "__main__":
