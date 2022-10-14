@@ -5,7 +5,7 @@
 # ------------------------------------------------------------
 #
 
-from tjmonopix2.analysis import analysis
+from tjmonopix2.analysis import analysis, plotting
 from tjmonopix2.scans.shift_and_inject import (get_scan_loop_mask_steps,
                                                shift_and_inject)
 from tjmonopix2.system.scan_base import ScanBase
@@ -39,9 +39,9 @@ class AnalogScan(ScanBase):
         self.chip.registers["SEL_PULSE_EXT_CONF"].write(0)
 
     def _scan(self, n_injections=100, **_):
-        pbar = tqdm(total=get_scan_loop_mask_steps(self), unit='Mask steps')
+        pbar = tqdm(total=get_scan_loop_mask_steps(self.chip), unit='Mask steps')
         with self.readout(scan_param_id=0):
-            shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=0)
+            shift_and_inject(chip=self.chip, n_injections=n_injections, pbar=pbar, scan_param_id=0)
         pbar.close()
 
         self.log.success('Scan finished')
@@ -49,6 +49,10 @@ class AnalogScan(ScanBase):
     def _analyze(self):
         with analysis.Analysis(raw_data_file=self.output_filename + '.h5', **self.configuration['bench']['analysis']) as a:
             a.analyze_data()
+
+        if self.configuration['bench']['analysis']['create_pdf']:
+            with plotting.Plotting(analyzed_data_file=a.analyzed_data_file) as p:
+                p.create_standard_plots()
 
 
 if __name__ == "__main__":

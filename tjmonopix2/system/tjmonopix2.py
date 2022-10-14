@@ -488,7 +488,6 @@ class MaskObject(dict):
                 indata += self.chip._write_register(82 + colgroup, self.get_column_group_data('injection', colgroup))
                 indata += self.chip._write_register(114 + rowgroup, self.get_row_group_data('injection', rowgroup))
                 indata += self.chip.write_sync(write=False)
-                last_coords = (col, row)
                 written.add((colgroup, rowgroup))
                 if len(indata) > 4000:  # Write command to chip before it gets too long
                     self.chip.write_command(indata)
@@ -629,10 +628,11 @@ class TJMonoPix2(object):
 
         self.registers = RegisterObject(self, 'registers.yaml')
 
-        masks = {'enable': {'default': False},
-                 'injection': {'default': False},
-                 'tdac': {'default': 0b000}
-                }
+        masks = {
+            'enable': {'default': False},
+            'injection': {'default': False},
+            'tdac': {'default': 0b000}  # all pixels masked
+        }
         self.masks = MaskObject(self, masks, (512, 512))
 
         # Load disabled pixels from chip config
@@ -1000,6 +1000,7 @@ class TJMonoPix2(object):
         '''
             Command to send a digital or analog injection to the chip.
             Digital or analog injection is selected globally via the INJECTION_SELECT register.
+            Need to reset BCID counter (register address 146) before injection.
 
             For digital injection, only CAL_edge signal is relevant:
                 - CAL_edge_mode switches between step (0) and pulse (1) mode
@@ -1010,7 +1011,9 @@ class TJMonoPix2(object):
                 - CAL_aux_dly is counted in cycles of the 160MHz clock and sets the delay before the edge of the signal
             {Cal,ChipId[4:0]}-{PulseStartCnfg[5:1]},{PulseStartCnfg[0], PulseStopCnfg[13:10]}}-{{PulseStopCnfg[9:0]} [Cal +DD +DD]
         '''
-        indata = [self.CMD_CAL]
+        indata = self._write_register(146, 0b100, write=False)
+        indata += self._write_register(146, 0b000, write=False)
+        indata += [self.CMD_CAL]
         indata += [self.cmd_data_map[self.chip_id]]
         indata += [self.cmd_data_map[(PulseStartCnfg & 0b11_1110) >> 1]]
         indata += [self.cmd_data_map[((PulseStartCnfg << 4) & 0b10000) + ((PulseStopCnfg >> 10) & 0b1111)]]

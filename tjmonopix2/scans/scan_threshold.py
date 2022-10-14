@@ -5,7 +5,7 @@
 # ------------------------------------------------------------
 #
 
-from tjmonopix2.analysis import analysis
+from tjmonopix2.analysis import analysis, plotting
 from tjmonopix2.scans.shift_and_inject import (get_scan_loop_mask_steps,
                                                shift_and_inject)
 from tjmonopix2.system.scan_base import ScanBase
@@ -45,19 +45,23 @@ class ThresholdScan(ScanBase):
         self.chip.registers["VH"].write(VCAL_HIGH)
         vcal_low_range = range(VCAL_LOW_start, VCAL_LOW_stop, VCAL_LOW_step)
 
-        pbar = tqdm(total=get_scan_loop_mask_steps(self) * len(vcal_low_range), unit='Mask steps')
+        pbar = tqdm(total=get_scan_loop_mask_steps(self.chip) * len(vcal_low_range), unit='Mask steps')
         for scan_param_id, vcal_low in enumerate(vcal_low_range):
             self.chip.registers["VL"].write(vcal_low)
 
             self.store_scan_par_values(scan_param_id=scan_param_id, vcal_high=VCAL_HIGH, vcal_low=vcal_low)
             with self.readout(scan_param_id=scan_param_id):
-                shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param_id)
+                shift_and_inject(chip=self.chip, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param_id)
         pbar.close()
         self.log.success('Scan finished')
 
     def _analyze(self):
         with analysis.Analysis(raw_data_file=self.output_filename + '.h5', **self.configuration['bench']['analysis']) as a:
             a.analyze_data()
+
+        if self.configuration['bench']['analysis']['create_pdf']:
+            with plotting.Plotting(analyzed_data_file=a.analyzed_data_file) as p:
+                p.create_standard_plots()
 
 
 if __name__ == "__main__":
