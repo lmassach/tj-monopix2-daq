@@ -13,20 +13,20 @@ from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.analysis import analysis
 
 scan_configuration = {
-    'start_column': 448,
-    'stop_column': 512,
+    'start_column':0,
+    'stop_column': 382,
     'start_row': 0,
     'stop_row': 512,
 
-    'scan_time': 5,  # seconds
+    'scan_time': 60,  # seconds
 }
 
 register_overrides = {
-    'ITHR': 40,
-    'IBIAS': 60,
-    'VRESET': 100,
-    'ICASN': 8,
-    'VCASP': 40,
+    'ITHR': 64,
+    'IBIAS': 50,
+    'VRESET': 143,
+    'ICASN': 0,
+    'VCASP': 93,
     'IDB': 100,
     # 'MON_EN_IDB': 1
 }
@@ -43,6 +43,25 @@ class SourceScan(ScanBase):
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = False
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100
+
+        #Masking noisy pixels (W14R12 chip, HV FEs)
+        #self.chip.masks['tdac'][483, 379] = 0b000
+        #self.chip.masks['tdac'][485, 352] = 0b000
+        #self.chip.masks['tdac'][452, 248] = 0b000
+        #self.chip.masks['tdac'][480, 317] = 0b000
+        #self.chip.masks['tdac'][465, 302] = 0b000
+        #self.chip.masks['tdac'][461, 126] = 0b000
+        #self.chip.masks['tdac'][489, 510] = 0b000
+        #self.chip.masks['tdac'][483, 340] = 0b000
+        #self.chip.masks['tdac'][491, 450] = 0b000
+        #self.chip.masks['tdac'][494, 463] = 0b000
+        #self.chip.masks['tdac'][486, 498] = 0b000
+        #self.chip.masks['tdac'][476, 24] = 0b000
+        #self.chip.masks['tdac'][493, 242] = 0b000
+        #self.chip.masks['tdac'][474, 53] = 0b000
+        #self.chip.masks['tdac'][476, 211] = 0b000
+        #self.chip.masks['tdac'][487, 16] = 0b000
+
         #self.chip.masks['hitor'][0, 0] = True
 
         self.chip.masks.apply_disable_mask()

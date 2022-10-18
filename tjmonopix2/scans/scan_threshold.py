@@ -13,14 +13,14 @@ from plotting_scurves import Plotting
 
 scan_configuration = {
     'start_column': 0,
-    'stop_column': 224,
-    'start_row': 0,
-    'stop_row': 512,
+    'stop_column': 50,
+    'start_row': 120,
+    'stop_row': 220,
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
-    'VCAL_LOW_start': 100,
-    'VCAL_LOW_stop': 60,
+    'VCAL_LOW_start': 2,
+    'VCAL_LOW_stop': 1,
     'VCAL_LOW_step': -1
 }
 
