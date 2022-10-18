@@ -122,14 +122,15 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")
         #plt.xlim(10, 120)
-        plt.ylim(0, max(h[10:120].max() for h in tot1d) * 1.2)
         #plt.xlim(10, 128)
         #plt.ylim(0, max(h[10:].max() for h in tot1d) * 1.2)
         plt.grid(axis='y')
         if log_tot:
+            plt.ylim(0.9, max(h[10:120].max() for h in tot1d) * 1.2)
             plt.yscale('log')
             set_integer_ticks(plt.gca().xaxis)
         else:
+            plt.ylim(0, max(h[10:120].max() for h in tot1d) * 1.2)
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         plt.legend()
         pdf.savefig(); plt.clf()
@@ -158,8 +159,8 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         plt.title("Hit map")
         plt.xlabel("Col")
         plt.ylabel("Row")
-        #plt.xlim(0,448)
-        plt.xlim(0,50)
+        plt.xlim(0,448)
+        # plt.xlim(0,50)
         cb = integer_ticks_colorbar()
         cb.set_label("Hits / pixel")
         set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
@@ -170,21 +171,23 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         # Map of the average ToT
         with np.errstate(all='ignore'):
             totavg = tot2d / counts2d
-        plt.pcolormesh(tot2d_edges, tot2d_edges, totavg.transpose(),
-                        vmin=-0.5, vmax=127.5, rasterized=True)  # Necessary for quick save and view in PDF
-        plt.title("Average ToT map")
-        plt.xlabel("Col")
-        plt.ylabel("Row")
-        #plt.xlim(225,230)
-        plt.xlim(0,50)
-        #plt.xlim(0,448)
-        plt.ylim(120, 220)
-        cb = integer_ticks_colorbar()
-        cb.set_label("ToT [25 ns]")
-        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
-        frontend_names_on_top()
-        pdf.savefig(); plt.clf()
-        # print("ToT map")
+        for i in range(0, 512, 25):
+            plt.pcolormesh(tot2d_edges, tot2d_edges, totavg.transpose(),
+                            vmin=-0.5, vmax=25.5, rasterized=True)  # Necessary for quick save and view in PDF
+            plt.title("Average ToT map")
+            plt.xlabel("Col")
+            plt.ylabel("Row")
+            #plt.xlim(225,230)
+            # plt.xlim(0,50)
+            # plt.xlim(0,448)
+            plt.xlim(i, min(i+25, 512))
+            plt.ylim(120, 220)
+            cb = integer_ticks_colorbar()
+            cb.set_label("ToT [25 ns]")
+            set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+            frontend_names_on_top()
+            pdf.savefig(); plt.clf()
+            # print("ToT map")
 
         # Noisy pixels
         if all(c.get("configuration_in.scan.run_config.scan_id") == "source_scan" for c in cfg):

@@ -13,22 +13,23 @@ from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.analysis import analysis
 
 scan_configuration = {
-    'start_column':0,
-    'stop_column': 382,
-    'start_row': 0,
-    'stop_row': 512,
+    'start_column': 218,
+    'stop_column': 221,
+    'start_row': 120,
+    'stop_row': 220,
 
-    'scan_time': 60,  # seconds
+    'scan_time': 5,  # seconds
 }
 
 register_overrides = {
-    'ITHR': 64,
-    'IBIAS': 50,
-    'VRESET': 143,
-    'ICASN': 0,
-    'VCASP': 93,
-    'IDB': 100,
-    # 'MON_EN_IDB': 1
+    'ITHR': 64,  # Default 64
+    'IBIAS': 50,  # Default 50
+    'VRESET': 143,  # Default 143
+    'ICASN': 90,  # Default 0
+    'VCASP': 93,  # Default 93
+    "VCASC": 228,  # Default 228
+    "IDB": 100,  # Default 100
+    'ITUNE': 53,  # Default 53
 }
 
 registers = ['IBIAS', 'ICASN', 'IDB', 'ITUNE', 'ITHR', 'ICOMP', 'IDEL', 'VRESET', 'VCASP', 'VH', 'VL', 'VCLIP', 'VCASC', 'IRAM']
@@ -41,7 +42,6 @@ class SourceScan(ScanBase):
         self.chip.masks['enable'][:,:] = False
         self.chip.masks['injection'][:,:] = False
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
-        self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = False
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100
 
         #Masking noisy pixels (W14R12 chip, HV FEs)

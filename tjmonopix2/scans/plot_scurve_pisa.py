@@ -170,6 +170,20 @@ def main(input_file, overwrite=False):
             cb.set_label("Pixels / bin")
             pdf.savefig(); plt.clf()
 
+        # S-Curve for specific pixels
+        for col, row in [(219, 161), (219, 160)]:
+            if not (col_start <= col < col_stop and row_start <= row < row_stop):
+                continue
+            plt.plot(charge_dac_values, occupancy[col-col_start,row-row_start,:], '.-', label=str((col, row)))
+        plt.title(subtitle)
+        plt.suptitle(f"S-Curve of specific pixels")
+        plt.xlabel("Injected charge [DAC]")
+        plt.ylabel("Occupancy")
+        plt.ylim(0, 1.5)
+        plt.legend()
+        set_integer_ticks(plt.gca().xaxis)
+        pdf.savefig(); plt.clf()
+
         # ToT vs injected charge as 2D histogram
         for (fc, lc, name), hist in zip(chain([(0, 511, 'All FEs')], FRONTENDS), tot_hist):
             if fc >= col_stop or lc < col_start:
