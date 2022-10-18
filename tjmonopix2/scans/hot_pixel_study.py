@@ -14,14 +14,14 @@ from plotting_scurves import Plotting
 
 scan_configuration = {
     # Pixels to enable
-    'start_column': 218,
-    'stop_column': 221,
+    'start_column': 216,
+    'stop_column': 222,
     'start_row': 120,
     'stop_row': 220,
 
     # Pixel to inject
-    'inj_col': 220,
-    'inj_row': 170,
+    'inj_col': 219,
+    'inj_row': 140,
 
     'n_injections': 100,
 }

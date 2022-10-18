@@ -74,9 +74,16 @@ def main(input_file, overwrite=False):
 
             # Load hits
             hits = f.root.Dut[i_first:i_last]
+            # Filter only the hits in the scan area (from col/row_start to col/row_stop)
+            # Sometimes disabled pixels outside of the scan area still fire for some reason
+            scan_area_mask = (hits["col"] >= col_start) & (hits["col"] < col_stop) & (hits["row"] >= row_start) & (hits["row"] < row_stop)
+            hits = hits[scan_area_mask]
+            del scan_area_mask
+
             with np.errstate(all='ignore'):
                 tot = (hits["te"] - hits["le"]) & 0x7f
             fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
+
 
             # Determine injected charge for each hit
             vh = scan_params["vcal_high"][hits["scan_param_id"]]
@@ -143,6 +150,7 @@ def main(input_file, overwrite=False):
                     f'{", ..." if len(noisy_list) > mi else ""}'
                     f"\nTotal = {len(noisy_list)} pixels ({len(noisy_list)/row_n/col_n:.1%})"
                 ), (0.5, 0.5), ha='center', va='center')
+            print("[" + ", ".join(str((a, b)) for a, b in noisy_list) + "]")
         else:
             plt.annotate("No noisy pixel found.", (0.5, 0.5), ha='center', va='center')
         plt.gca().set_axis_off()
