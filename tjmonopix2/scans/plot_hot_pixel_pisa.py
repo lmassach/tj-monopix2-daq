@@ -12,10 +12,12 @@ from tqdm import tqdm
 from plot_utils_pisa import *
 
 
-def main(input_file, overwrite=False):
+def main(input_file, overwrite=False, verbose=False):
     output_file = os.path.splitext(input_file)[0] + "_hp.pdf"
     if os.path.isfile(output_file) and not overwrite:
         return
+
+    print(f"Processing {input_file}")
 
     with tb.open_file(input_file) as f, PdfPages(output_file) as pdf:
         cfg = get_config_dict(f)
@@ -37,6 +39,19 @@ def main(input_file, overwrite=False):
         inj_mask = (hits["col"] == inj_col) & (hits["row"] == inj_row)
         print("Injected pixel:", (inj_col, inj_row))
         print("Other pixels:", np.unique(hits[~inj_mask][["col", "row"]]))
+
+        if verbose:
+            print("Row  Col   LE   TE  ΔLE  ΔTE  ΔTS[40MHz]  TS[40MHz]")
+            pu, pl, pt = np.nan, np.nan, np.nan
+            for cnt, (r, c, l, t, u, i) in enumerate(zip(hits["row"], hits["col"], hits["le"], hits["te"], hits["timestamp"], inj_mask)):
+                if cnt > 100:
+                    break
+                u = (u - hits["timestamp"][0]) / 16
+                color = "\x1b[32m" if i else ""
+                reset = "\x1b[0m" if i else ""
+                with np.errstate(all='ignore'):
+                    print(f"{color}{r:3d}  {c:3d}  {l:3d}  {t:3d}  {(l-pl)%128:3.0f}  {(t-pt)%128:3.0f}  {u-pu:10.4f}  {u}{reset}")
+                pu, pl, pt = u, l, t
 
         # Compute the le, te and timestamp of the previous hit on the injected pixel
         inj_ts = np.full(hits.shape, np.nan, np.float64)  # Timestamp of the last injection for each hit
@@ -72,14 +87,20 @@ def main(input_file, overwrite=False):
         plt.legend()
         pdf.savefig(); plt.clf()
 
+        plt.axes((0.125, 0.11, 0.775, 0.72))
         for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
-            plt.hist(delta_ts[mask] / 640, bins=700, range=[0, 17.5], histtype='step', label=name)
+            plt.hist(delta_ts[mask] / 640, bins=700, range=[-0.0125, 17.4875], histtype='step', label=name)
         plt.title("$\\Delta$timestamp from last injection")
-        plt.xlabel("$\\Delta$timestamp [us]")
-        plt.xlim(0, delta_ts[delta_ts / 640 <= 17.5].max() / 640 + 0.5)
+        plt.xlabel("$\\Delta$timestamp [μs]")
+        plt.xlim(-0.025, delta_ts[delta_ts / 640 <= 17.5].max() / 640 + 0.025)
         plt.ylabel("Hits / bin")
         plt.grid()
         plt.legend()
+        # Axis above with time in 25 ns units
+        xl, xu = plt.xlim()
+        ax2 = plt.gca().twiny()
+        ax2.set_xlim(xl * 40, xu * 40)
+        ax2.set_xlabel("$\\Delta$timestamp [25 ns]")
         pdf.savefig(); plt.clf()
 
         for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
@@ -112,6 +133,8 @@ if __name__ == "__main__":
         help="The hot_pixel_scan_interpreted.h5 file(s). If not given, looks in output_data/module_0/chip_0.")
     parser.add_argument("-f", "--overwrite", action="store_true",
                         help="Overwrite plots when already present.")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Print a table with data from the first 100 hits.")
     args = parser.parse_args()
 
     files = []
@@ -124,6 +147,6 @@ if __name__ == "__main__":
 
     for fp in tqdm(files):
         try:
-            main(fp, args.overwrite)
+            main(fp, args.overwrite, args.verbose)
         except Exception:
             print(traceback.format_exc())
