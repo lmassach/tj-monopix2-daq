@@ -70,7 +70,7 @@ def main(input_file, overwrite=False, verbose=False):
             inj_ts[ts_mask] = last_ts
             inj_le[ts_mask] = last_le
             inj_te[ts_mask] = last_te
-        del unique_timestamps, last_ts, last_te, last_le, ts_mask
+        del last_ts, last_te, last_le, ts_mask
 
         # Time from last injection
         delta_ts = hits["timestamp"] - inj_ts
@@ -91,6 +91,19 @@ def main(input_file, overwrite=False, verbose=False):
         pdf.savefig(); plt.clf()
 
         plt.axes((0.125, 0.11, 0.775, 0.72))
+        plt.hist(np.diff(hits[inj_mask]["timestamp"]) / 640, bins=700, range=[-0.0125, 17.4875], histtype='step')
+        plt.title("$\\Delta$timestamp between injections")
+        plt.xlabel("$\\Delta$timestamp [μs]")
+        plt.ylabel("Hits / bin")
+        plt.grid()
+        # Axis above with time in 25 ns units
+        xl, xu = plt.xlim()
+        ax2 = plt.gca().twiny()
+        ax2.set_xlim(xl * 40, xu * 40)
+        ax2.set_xlabel("$\\Delta$timestamp [25 ns]")
+        pdf.savefig(); plt.clf()
+
+        plt.axes((0.125, 0.11, 0.775, 0.72))
         for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
             plt.hist(delta_ts[mask] / 640, bins=700, range=[-0.0125, 17.4875], histtype='step', label=name)
         plt.title("$\\Delta$timestamp from last injection")
@@ -106,11 +119,27 @@ def main(input_file, overwrite=False, verbose=False):
         ax2.set_xlabel("$\\Delta$timestamp [25 ns]")
         pdf.savefig(); plt.clf()
 
+        plt.axes((0.125, 0.11, 0.775, 0.72))
+        for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
+            plt.hist(delta_ts[mask] / 640, bins=80, range=[-0.0125, 2-0.0125], histtype='step', label=name)
+        plt.title("$\\Delta$timestamp from last injection")
+        plt.xlabel("$\\Delta$timestamp [μs]")
+        plt.xlim(-0.025, delta_ts[delta_ts / 640 <= 2-0.0125].max() / 640 + 0.025)
+        plt.ylabel("Hits / bin")
+        plt.grid()
+        plt.legend()
+        # Axis above with time in 25 ns units
+        xl, xu = plt.xlim()
+        ax2 = plt.gca().twiny()
+        ax2.set_xlim(xl * 40, xu * 40)
+        ax2.set_xlabel("$\\Delta$timestamp [25 ns]")
+        pdf.savefig(); plt.clf()
+
         for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
             plt.hist(delta_le[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("$\\Delta$LE from last injection")
         plt.xlabel("$\\Delta$LE [25 ns]")
-        plt.xlim(delta_le.min() - 1, delta_le.max() + 1)
+        plt.xlim(delta_le[np.isfinite(delta_le)].min() - 1, delta_le[np.isfinite(delta_le)].max() + 1)
         plt.ylabel("Hits / bin")
         plt.grid()
         plt.legend()
@@ -120,11 +149,25 @@ def main(input_file, overwrite=False, verbose=False):
             plt.hist(delta_le_te[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("LE - TE of last injection")
         plt.xlabel("LE - TE$_{inj}$ [25 ns]")
-        plt.xlim(delta_le_te.min() - 1, delta_le_te.max() + 1)
+        plt.xlim(delta_le_te[np.isfinite(delta_le_te)].min() - 1, delta_le_te[np.isfinite(delta_le_te)].max() + 1)
         plt.ylabel("Hits / bin")
         plt.grid()
         plt.legend()
         pdf.savefig(); plt.clf()
+
+        for i, ts in enumerate(unique_timestamps):
+            if i > 15:
+                break
+            mask = hits["timestamp"] == ts
+            mh = hits[mask]
+            plt.hist2d(mh["col"], mh["row"], bins=[512, 512], range=[[0, 512], [0, 512]], rasterized=True)
+            plt.xlabel("Column")
+            plt.ylabel("Row")
+            plt.xlim(200, 230)
+            plt.ylim(120, 220)
+            plt.colorbar().set_label("Number of hits")
+            plt.title(f"Frame {i} @ timestamp = {(ts-unique_timestamps.min())/16} [25 ns]")
+            pdf.savefig(); plt.clf()
 
         plt.close()
 

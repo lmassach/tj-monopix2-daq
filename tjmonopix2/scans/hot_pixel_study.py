@@ -7,10 +7,7 @@
 """Enables some pixels, inject a fixed charge only on one."""
 
 from tjmonopix2.analysis import analysis
-from tjmonopix2.scans.shift_and_inject import get_scan_loop_mask_steps, shift_and_inject
 from tjmonopix2.system.scan_base import ScanBase
-from tqdm import tqdm
-from plotting_scurves import Plotting
 
 scan_configuration = {
     # Pixels to enable
@@ -20,7 +17,7 @@ scan_configuration = {
     'stop_row': 220,
 
     # Pixel to inject
-    'inj_col': 219,
+    'inj_col': 217,
     'inj_row': 140,
 
     'n_injections': 100,
@@ -32,11 +29,18 @@ register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
     'VRESET': 143,  # Default 143
-    'ICASN': 90,  # Default 0
+    'ICASN': 105,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
     'ITUNE': 53,  # Default 53
+
+    'FREEZE_START_CONF': 2,  # Default 1
+    'READ_START_CONF': 6+10,  # Default 3
+    'READ_STOP_CONF': 14+10,  # Default 5
+    'LOAD_CONF': 18+10,  # Default 7
+    'FREEZE_STOP_CONF': 19+10,  # Default 8
+    'STOP_CONF': 19+10,  # Default 8
 }
 
 
@@ -62,6 +66,23 @@ class HotPixelScan(ScanBase):
         self.chip.masks['enable'][75,159] = False
         self.chip.masks['enable'][163,219] = False
         self.chip.masks['enable'][427,259] = False
+
+        # W8R13 pixels that fire even when disabled
+        # For these ones, we disable the readout of the whole double-column
+        for col in [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335]:
+            dcol = col // 2
+            # EN_RO_CONF
+            value = self.chip._get_register_value(155+dcol//16)
+            self.chip._write_register(155+dcol//16, value & (~(1 << (dcol % 16)) & 0xffff))
+            # EN_BCID_CONF
+            value = self.chip._get_register_value(171+dcol//16)
+            self.chip._write_register(171+dcol//16, value & (~(1 << (dcol % 16)) & 0xffff))
+            # EN_RO_RST_CONF
+            value = self.chip._get_register_value(187+dcol//16)
+            self.chip._write_register(187+dcol//16, value & (~(1 << (dcol % 16)) & 0xffff))
+            # EN_FREEZE_CONF
+            value = self.chip._get_register_value(203+dcol//16)
+            self.chip._write_register(203+dcol//16, value & (~(1 << (dcol % 16)) & 0xffff))
 
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
