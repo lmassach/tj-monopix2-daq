@@ -41,16 +41,19 @@ def main(input_file, overwrite=False, verbose=False):
         print("Other pixels:", np.unique(hits[~inj_mask][["col", "row"]]))
 
         if verbose:
-            print("Row  Col   LE   TE  ΔLE  ΔTE  ΔTS[40MHz]  TS[40MHz]")
+            TS_CLK = 640  # MHz  # Multiplying by 1.106 we get match between ΔTE and ΔTS: wrong/unsynchronized clocks?
+            print(f"\x1b[1mAssuming timestamp clock = {TS_CLK:.2f} MHz\x1b[0m")
+            print("\x1b[1mGreen = injected pixels\x1b[0m")
+            print("\x1b[1mRow  Col   LE   TE  ΔLE  ΔTE   ΔTS[25ns]  TS[25ns]\x1b[0m")
             pu, pl, pt = np.nan, np.nan, np.nan
             for cnt, (r, c, l, t, u, i) in enumerate(zip(hits["row"], hits["col"], hits["le"], hits["te"], hits["timestamp"], inj_mask)):
                 if cnt > 100:
                     break
-                u = (u - hits["timestamp"][0]) / 16
+                u = (u - hits["timestamp"][0]) / TS_CLK / 25e-3
                 color = "\x1b[32m" if i else ""
                 reset = "\x1b[0m" if i else ""
                 with np.errstate(all='ignore'):
-                    print(f"{color}{r:3d}  {c:3d}  {l:3d}  {t:3d}  {(l-pl)%128:3.0f}  {(t-pt)%128:3.0f}  {u-pu:10.4f}  {u}{reset}")
+                    print(f"{color}{r:3d}  {c:3d}  {l:3d}  {t:3d}  {(l-pl)%128:3.0f}  {(t-pt)%128:3.0f}  {u-pu:10.4f}  {u:.4f}{reset}")
                 pu, pl, pt = u, l, t
 
         # Compute the le, te and timestamp of the previous hit on the injected pixel
