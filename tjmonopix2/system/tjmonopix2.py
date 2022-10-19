@@ -1016,7 +1016,7 @@ class TJMonoPix2(object):
 
         return indata
 
-    def inject(self, PulseStartCnfg=1, PulseStopCnfg=512, repetitions=1, latency=400, write=True):
+    def inject(self, PulseStartCnfg=1, PulseStopCnfg=512, repetitions=1, latency=1400, write=True):
         indata = self.write_sync(write=False) * 4
         indata += self.write_cal(PulseStartCnfg=PulseStartCnfg, PulseStopCnfg=PulseStopCnfg, write=False)  # Injection
         indata += self.write_sync(write=False) * latency
