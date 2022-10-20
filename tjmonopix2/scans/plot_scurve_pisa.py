@@ -179,7 +179,7 @@ def main(input_file, overwrite=False):
             pdf.savefig(); plt.clf()
 
         # S-Curve for specific pixels
-        for col, row in [(219, 161), (219, 160)]:
+        for col, row in [(219, 161), (219, 160), (220, 160), (221, 160), (220, 159), (221, 159)]:
             if not (col_start <= col < col_stop and row_start <= row < row_stop):
                 continue
             plt.plot(charge_dac_values, occupancy[col-col_start,row-row_start,:], '.-', label=str((col, row)))

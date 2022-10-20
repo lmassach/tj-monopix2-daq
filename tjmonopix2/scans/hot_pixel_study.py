@@ -69,20 +69,19 @@ class HotPixelScan(ScanBase):
 
         # W8R13 pixels that fire even when disabled
         # For these ones, we disable the readout of the whole double-column
+        reg_values = [0xffff] * 16
         for col in [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335]:
             dcol = col // 2
+            reg_values[dcol//16] &= ~(1 << (dcol % 16))
+        for i, v in enumerate(reg_values):
             # EN_RO_CONF
-            value = self.chip._get_register_value(155+dcol//16)
-            self.chip._write_register(155+dcol//16, value & (~(1 << (dcol % 16)) & 0xffff))
+            self.chip._write_register(155+i, v)
             # EN_BCID_CONF
-            value = self.chip._get_register_value(171+dcol//16)
-            self.chip._write_register(171+dcol//16, value & (~(1 << (dcol % 16)) & 0xffff))
+            self.chip._write_register(171+i, v)
             # EN_RO_RST_CONF
-            value = self.chip._get_register_value(187+dcol//16)
-            self.chip._write_register(187+dcol//16, value & (~(1 << (dcol % 16)) & 0xffff))
+            self.chip._write_register(187+i, v)
             # EN_FREEZE_CONF
-            value = self.chip._get_register_value(203+dcol//16)
-            self.chip._write_register(203+dcol//16, value & (~(1 << (dcol % 16)) & 0xffff))
+            self.chip._write_register(203+i, v)
 
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
