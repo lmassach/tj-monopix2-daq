@@ -155,6 +155,26 @@ def main(input_file, overwrite=False, verbose=False):
         plt.legend()
         pdf.savefig(); plt.clf()
 
+        h = np.zeros(128)
+        for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
+            with np.errstate(all='ignore'):
+                ht, _, _ = plt.hist(
+                    (hits["le"][1:][mask[1:]] - hits["te"][:-1][mask[1:]]) & 0x7f,
+                    bins=128, range=[-0.5, 127.5], histtype='step', label=name)
+                h += ht
+        plt.title("LE - TE of previous hit")
+        plt.xlabel("LE$_{i}$ - TE$_{i-1}$ [25 ns]")
+        nz = np.nonzero(h > 0)[0]
+        plt.xlim(nz[0] - 1, nz[-1] + 1)
+        plt.ylabel("Hits / bin")
+        plt.grid()
+        plt.legend()
+        pdf.savefig()
+        plt.xlim(-1, 21)
+        plt.ylim(0, (h[:21].max() + 1) * 1.2)
+        pdf.savefig(); plt.clf()
+
+        # Frames ("photos" of pixels that fire with the same timestamp, i.e. read at the same time)
         for i, ts in enumerate(unique_timestamps):
             if i > 15:
                 break

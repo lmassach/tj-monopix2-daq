@@ -105,7 +105,9 @@ def draw_summary(input_file_path, cfg):
                 f"{r} = {cfg.get(f'configuration_out.chip.registers.{r}')}"
                 for r in [
                     "IBIAS", "ITHR", "ICASN", "IDB", "ITUNE", "VRESET", "VCASP",
-                    "VCASC", "VCLIP", "VL", "VH", "ICOMP", "IDEL", "IRAM"])
+                    "VCASC", "VCLIP", "VL", "VH", "ICOMP", "IDEL", "IRAM",
+                    "FREEZE_START_CONF", "READ_START_CONF", "READ_STOP_CONF",
+                    "LOAD_CONF", "FREEZE_STOP_CONF", "STOP_CONF"])
             + f"\n\n{cfg.get('configuration_in.scan.run_config.scan_id')}\n"
             + ", ".join(
                 f"{x.split('.')[-1]} = {cfg[x]}" for x in cfg.keys()

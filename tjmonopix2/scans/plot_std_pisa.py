@@ -107,7 +107,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         plt.title("Hits per pixel")
         plt.xlabel("Number of hits")
         plt.ylabel("Pixels / bin")
-        plt.yscale("log")
+        # plt.yscale("log")
         plt.grid(axis='y')
         set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         plt.legend()

@@ -11,16 +11,16 @@ from tjmonopix2.system.scan_base import ScanBase
 
 scan_configuration = {
     # Pixels to enable
-    'start_column': 216,
-    'stop_column': 222,
-    'start_row': 120,
-    'stop_row': 220,
+    'start_column': 219,
+    'stop_column': 220,
+    'start_row': 161,
+    'stop_row': 162,
 
     # Pixel to inject
     'inj_col': 217,
     'inj_row': 140,
 
-    'n_injections': 100,
+    'n_injections': 10000,
 }
 
 register_overrides = {
@@ -29,18 +29,18 @@ register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
     'VRESET': 143,  # Default 143
-    'ICASN': 105,  # Default 0
+    'ICASN': 200,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
     'ITUNE': 53,  # Default 53
 
-    'FREEZE_START_CONF': 2,  # Default 1
-    'READ_START_CONF': 6+10,  # Default 3
-    'READ_STOP_CONF': 14+10,  # Default 5
-    'LOAD_CONF': 18+10,  # Default 7
-    'FREEZE_STOP_CONF': 19+10,  # Default 8
-    'STOP_CONF': 19+10,  # Default 8
+    'FREEZE_START_CONF': 1,  # Default 1
+    'READ_START_CONF': 3,  # Default 3
+    'READ_STOP_CONF': 5,  # Default 5
+    'LOAD_CONF': 59,  # Default 7
+    'FREEZE_STOP_CONF': 60,  # Default 8
+    'STOP_CONF': 60,  # Default 8
 }
 
 
@@ -53,8 +53,11 @@ class HotPixelScan(ScanBase):
         self.chip.masks['enable'][:,:] = False
         self.chip.masks['injection'][:,:] = False
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
+        self.chip.masks['enable'][inj_col,inj_row] = True
         self.chip.masks['injection'][inj_col,inj_row] = True
-        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100  # TDAC=4 for threshold tuning
+        # self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100  # TDAC=4 for threshold tuning
+        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 4
+        # self.chip.masks['tdac'][219,161] = 1
 
         # Disable W8R13 bad/broken columns (25, 160, 161, 224, 274, 383-414 included, 447) and pixels
         self.chip.masks['enable'][25,:] = False  # Many pixels don't fire
