@@ -41,7 +41,7 @@ def main(input_file, overwrite=False, verbose=False):
         print("Other pixels:", np.unique(hits[~inj_mask][["col", "row"]]))
 
         if verbose:
-            TS_CLK = 640  # MHz  # Multiplying by 1.106 we get match between ΔTE and ΔTS: wrong/unsynchronized clocks?
+            TS_CLK = 40  # MHz  # Multiplying by 1.106 we get match between ΔTE and ΔTS: wrong/unsynchronized clocks?
             print(f"\x1b[1mAssuming timestamp clock = {TS_CLK:.2f} MHz\x1b[0m")
             print("\x1b[1mGreen = injected pixels\x1b[0m")
             print("\x1b[1mRow  Col   LE   TE  ΔLE  ΔTE   ΔTS[25ns]  TS[25ns]\x1b[0m")
@@ -91,7 +91,7 @@ def main(input_file, overwrite=False, verbose=False):
         pdf.savefig(); plt.clf()
 
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.hist(np.diff(hits[inj_mask]["timestamp"]) / 640, bins=700, range=[-0.0125, 17.4875], histtype='step')
+        plt.hist(np.diff(hits[inj_mask]["timestamp"]) / TS_CLK, bins=700, range=[0, 280], histtype='step')
         plt.title("$\\Delta$timestamp between injections")
         plt.xlabel("$\\Delta$timestamp [μs]")
         plt.ylabel("Hits / bin")
@@ -105,10 +105,10 @@ def main(input_file, overwrite=False, verbose=False):
 
         plt.axes((0.125, 0.11, 0.775, 0.72))
         for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
-            plt.hist(delta_ts[mask] / 640, bins=700, range=[-0.0125, 17.4875], histtype='step', label=name)
+            plt.hist(delta_ts[mask] / TS_CLK, bins=700, range=[0, 280], histtype='step', label=name)
         plt.title("$\\Delta$timestamp from last injection")
         plt.xlabel("$\\Delta$timestamp [μs]")
-        plt.xlim(-0.025, delta_ts[delta_ts / 640 <= 17.5].max() / 640 + 0.025)
+        plt.xlim(-0.025, delta_ts[delta_ts / TS_CLK <= 280].max() / TS_CLK + 0.025)
         plt.ylabel("Hits / bin")
         plt.grid()
         plt.legend()
@@ -121,10 +121,10 @@ def main(input_file, overwrite=False, verbose=False):
 
         plt.axes((0.125, 0.11, 0.775, 0.72))
         for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
-            plt.hist(delta_ts[mask] / 640, bins=80, range=[-0.0125, 2-0.0125], histtype='step', label=name)
+            plt.hist(delta_ts[mask] / TS_CLK, bins=80, range=[-0.0125, 2-0.0125], histtype='step', label=name)
         plt.title("$\\Delta$timestamp from last injection")
         plt.xlabel("$\\Delta$timestamp [μs]")
-        plt.xlim(-0.025, delta_ts[delta_ts / 640 <= 2-0.0125].max() / 640 + 0.025)
+        plt.xlim(-0.025, delta_ts[delta_ts / TS_CLK <= 2-0.0125].max() / TS_CLK + 0.025)
         plt.ylabel("Hits / bin")
         plt.grid()
         plt.legend()
