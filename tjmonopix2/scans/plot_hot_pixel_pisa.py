@@ -37,11 +37,13 @@ def main(input_file, overwrite=False, verbose=False):
         # Distinguish the hits from the injected pixel, and those from other pixels
         hits = f.root.Dut[:]
         inj_mask = (hits["col"] == inj_col) & (hits["row"] == inj_row)
+        first_hit_after_inj_mask = np.zeros(inj_mask.shape, bool)
+        first_hit_after_inj_mask[1:] = inj_mask[:-1]
         print("Injected pixel:", (inj_col, inj_row))
         print("Other pixels:", np.unique(hits[~inj_mask][["col", "row"]]))
 
+        TS_CLK = 40  # MHz  # Multiplying by 1.106 we get match between ΔTE and ΔTS: wrong/unsynchronized clocks?
         if verbose:
-            TS_CLK = 40  # MHz  # Multiplying by 1.106 we get match between ΔTE and ΔTS: wrong/unsynchronized clocks?
             print(f"\x1b[1mAssuming timestamp clock = {TS_CLK:.2f} MHz\x1b[0m")
             print("\x1b[1mGreen = injected pixels\x1b[0m")
             print("\x1b[1mRow  Col   LE   TE  ΔLE  ΔTE   ΔTS[25ns]  TS[25ns]\x1b[0m")
@@ -104,7 +106,9 @@ def main(input_file, overwrite=False, verbose=False):
         pdf.savefig(); plt.clf()
 
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
+        for mask, name in [(inj_mask, "Injected pixel"),
+                           (first_hit_after_inj_mask, "Others (only 1st hit after inj.)"),
+                           ((~inj_mask & (~first_hit_after_inj_mask)), "All other hits")]:
             plt.hist(delta_ts[mask] / TS_CLK, bins=700, range=[0, 280], histtype='step', label=name)
         plt.title("$\\Delta$timestamp from last injection")
         plt.xlabel("$\\Delta$timestamp [μs]")
@@ -120,7 +124,9 @@ def main(input_file, overwrite=False, verbose=False):
         pdf.savefig(); plt.clf()
 
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
+        for mask, name in [(inj_mask, "Injected pixel"),
+                           (first_hit_after_inj_mask, "Others (only 1st hit after inj.)"),
+                           ((~inj_mask & (~first_hit_after_inj_mask)), "All other hits")]:
             plt.hist(delta_ts[mask] / TS_CLK, bins=80, range=[-0.0125, 2-0.0125], histtype='step', label=name)
         plt.title("$\\Delta$timestamp from last injection")
         plt.xlabel("$\\Delta$timestamp [μs]")
@@ -135,7 +141,9 @@ def main(input_file, overwrite=False, verbose=False):
         ax2.set_xlabel("$\\Delta$timestamp [25 ns]")
         pdf.savefig(); plt.clf()
 
-        for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
+        for mask, name in [(inj_mask, "Injected pixel"),
+                           (first_hit_after_inj_mask, "Others (only 1st hit after inj.)"),
+                           ((~inj_mask & (~first_hit_after_inj_mask)), "All other hits")]:
             plt.hist(delta_le[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("$\\Delta$LE from last injection")
         plt.xlabel("$\\Delta$LE [25 ns]")
@@ -145,7 +153,9 @@ def main(input_file, overwrite=False, verbose=False):
         plt.legend()
         pdf.savefig(); plt.clf()
 
-        for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
+        for mask, name in [(inj_mask, "Injected pixel"),
+                           (first_hit_after_inj_mask, "Others (only 1st hit after inj.)"),
+                           ((~inj_mask & (~first_hit_after_inj_mask)), "All other hits")]:
             plt.hist(delta_le_te[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("LE - TE of last injection")
         plt.xlabel("LE - TE$_{inj}$ [25 ns]")
