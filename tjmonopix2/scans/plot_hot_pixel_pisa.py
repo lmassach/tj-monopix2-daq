@@ -75,10 +75,11 @@ def main(input_file, overwrite=False, verbose=False):
         del last_ts, last_te, last_le, ts_mask
 
         # Time from last injection
-        delta_ts = hits["timestamp"] - inj_ts
-        delta_le = (hits["le"] - inj_le) % 128
-        delta_le_te = (hits["le"] - inj_te) % 128
-        delta_te = (hits["te"] - inj_te) % 128
+        with np.errstate(all='ignore'):
+            delta_ts = hits["timestamp"] - inj_ts
+            delta_le = (hits["le"] - inj_le) % 128
+            delta_le_te = (hits["le"] - inj_te) % 128
+            delta_te = (hits["te"] - inj_te) % 128
 
         # Histograms
         for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
@@ -107,8 +108,8 @@ def main(input_file, overwrite=False, verbose=False):
 
         plt.axes((0.125, 0.11, 0.775, 0.72))
         for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask, "Others (only 1st hit after inj.)"),
-                           ((~inj_mask & (~first_hit_after_inj_mask)), "All other hits")]:
+                           (first_hit_after_inj_mask & (~inj_mask), "Others (only 1st hit after inj.)"),
+                           ((~inj_mask) & (~first_hit_after_inj_mask), "All other hits")]:
             plt.hist(delta_ts[mask] / TS_CLK, bins=700, range=[0, 280], histtype='step', label=name)
         plt.title("$\\Delta$timestamp from last injection")
         plt.xlabel("$\\Delta$timestamp [μs]")
@@ -125,8 +126,8 @@ def main(input_file, overwrite=False, verbose=False):
 
         plt.axes((0.125, 0.11, 0.775, 0.72))
         for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask, "Others (only 1st hit after inj.)"),
-                           ((~inj_mask & (~first_hit_after_inj_mask)), "All other hits")]:
+                           (first_hit_after_inj_mask & (~inj_mask), "Others (only 1st hit after inj.)"),
+                           ((~inj_mask) & (~first_hit_after_inj_mask), "All other hits")]:
             plt.hist(delta_ts[mask] / TS_CLK, bins=80, range=[-0.0125, 2-0.0125], histtype='step', label=name)
         plt.title("$\\Delta$timestamp from last injection")
         plt.xlabel("$\\Delta$timestamp [μs]")
@@ -142,8 +143,8 @@ def main(input_file, overwrite=False, verbose=False):
         pdf.savefig(); plt.clf()
 
         for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask, "Others (only 1st hit after inj.)"),
-                           ((~inj_mask & (~first_hit_after_inj_mask)), "All other hits")]:
+                           (first_hit_after_inj_mask & (~inj_mask), "Others (only 1st hit after inj.)"),
+                           ((~inj_mask) & (~first_hit_after_inj_mask), "All other hits")]:
             plt.hist(delta_le[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("$\\Delta$LE from last injection")
         plt.xlabel("$\\Delta$LE [25 ns]")
@@ -154,8 +155,8 @@ def main(input_file, overwrite=False, verbose=False):
         pdf.savefig(); plt.clf()
 
         for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask, "Others (only 1st hit after inj.)"),
-                           ((~inj_mask & (~first_hit_after_inj_mask)), "All other hits")]:
+                           (first_hit_after_inj_mask & (~inj_mask), "Others (only 1st hit after inj.)"),
+                           ((~inj_mask) & (~first_hit_after_inj_mask), "All other hits")]:
             plt.hist(delta_le_te[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("LE - TE of last injection")
         plt.xlabel("LE - TE$_{inj}$ [25 ns]")
