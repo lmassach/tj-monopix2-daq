@@ -21,7 +21,9 @@ scan_configuration = {
     'VCAL_HIGH': 140,
     'VCAL_LOW_start': 110,
     'VCAL_LOW_stop': 65,
-    'VCAL_LOW_step': -1
+    'VCAL_LOW_step': -1,
+
+    'reset_bcid': False  # Reset BCID counter before every injection
 }
 
 register_overrides = {
@@ -115,7 +117,7 @@ class ThresholdScan(ScanBase):
 
         self.chip.registers["SEL_PULSE_EXT_CONF"].write(0)
 
-    def _scan(self, n_injections=100, VCAL_HIGH=80, VCAL_LOW_start=80, VCAL_LOW_stop=40, VCAL_LOW_step=-1, **_):
+    def _scan(self, n_injections=100, VCAL_HIGH=80, VCAL_LOW_start=80, VCAL_LOW_stop=40, VCAL_LOW_step=-1, reset_bcid=False, **_):
         """
         Injects charges from VCAL_LOW_START to VCAL_LOW_STOP in steps of VCAL_LOW_STEP while keeping VCAL_HIGH constant.
         """
@@ -129,7 +131,7 @@ class ThresholdScan(ScanBase):
 
             self.store_scan_par_values(scan_param_id=scan_param_id, vcal_high=VCAL_HIGH, vcal_low=vcal_low)
             with self.readout(scan_param_id=scan_param_id):
-                shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param_id)
+                shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param_id, reset_bcid=reset_bcid)
         pbar.close()
         self.log.success('Scan finished')
 

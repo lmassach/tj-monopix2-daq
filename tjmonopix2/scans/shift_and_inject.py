@@ -11,7 +11,7 @@
 '''
 
 
-def shift_and_inject(scan, n_injections, pbar=None, scan_param_id=0, masks=['injection', 'enable'], pattern='default', cache=False, skip_empty=True):
+def shift_and_inject(scan, n_injections, pbar=None, scan_param_id=0, masks=['injection', 'enable'], pattern='default', cache=False, skip_empty=True, reset_bcid=False):
     ''' Regular mask shift and analog injection function.
 
     Parameters:
@@ -32,10 +32,12 @@ def shift_and_inject(scan, n_injections, pbar=None, scan_param_id=0, masks=['inj
             If True use mask caching for speedup. Default is False.
         skip_empty : boolean
             If True skip empty mask steps for speedup. Default is True.
+        reset_bcid: boolean
+            If True, resets the BCID counter before every injection
     '''
     for fe, active_pixels in scan.chip.masks.shift(masks=masks, pattern=pattern, cache=cache, skip_empty=skip_empty):
         if not fe == 'skipped':
-            scan.chip.inject(PulseStartCnfg=1, PulseStopCnfg=512, repetitions=n_injections, latency=1400)
+            scan.chip.inject(PulseStartCnfg=1, PulseStopCnfg=512, repetitions=n_injections, latency=1400, reset_bcid=reset_bcid)
         if pbar is not None:
             pbar.update(1)
 

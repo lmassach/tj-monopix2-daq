@@ -1,0 +1,14 @@
+basil-daq
+coloredlogs
+gitpython
+numba
+matplotlib
+numpy
+online_monitor
+pyyaml
+pyzmq
+tables
+tqdm
+scipy
+pandas
+uncertainties
