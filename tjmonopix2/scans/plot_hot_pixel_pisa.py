@@ -37,8 +37,6 @@ def main(input_file, overwrite=False, verbose=False):
         # Distinguish the hits from the injected pixel, and those from other pixels
         hits = f.root.Dut[:]
         inj_mask = (hits["col"] == inj_col) & (hits["row"] == inj_row)
-        first_hit_after_inj_mask = np.zeros(inj_mask.shape, bool)
-        first_hit_after_inj_mask[1:] = inj_mask[:-1]
         print("Injected pixel:", (inj_col, inj_row))
         print("Other pixels:", np.unique(hits[~inj_mask][["col", "row"]]))
 
@@ -62,13 +60,20 @@ def main(input_file, overwrite=False, verbose=False):
         inj_ts = np.full(hits.shape, np.nan, np.float64)  # Timestamp of the last injection for each hit
         inj_le = np.full(hits.shape, np.nan, np.float64)  # LE of the last injection for each hit
         inj_te = np.full(hits.shape, np.nan, np.float64)  # TE of the last injection for each hit
+        first_hit_after_inj_mask = np.zeros(inj_mask.shape, bool)
         unique_timestamps = np.unique(hits["timestamp"])
-        last_ts, last_le, last_te = np.nan, np.nan, np.nan
+        unique_timestamps.sort()
+        last_ts, last_le, last_te, prev_ts_was_inj = np.nan, np.nan, np.nan, False
         for ts in unique_timestamps:
             ts_mask = hits["timestamp"] == ts
             if np.count_nonzero(ts_mask & inj_mask):
                 inj_hit_idx = np.argmax(ts_mask & inj_mask)
                 last_ts, last_le, last_te = hits[inj_hit_idx][["timestamp", "le", "te"]]
+                prev_ts_was_inj = True
+            else:
+                if prev_ts_was_inj:
+                    first_hit_after_inj_mask[ts_mask] = True
+                prev_ts_was_inj = False
             inj_ts[ts_mask] = last_ts
             inj_le[ts_mask] = last_le
             inj_te[ts_mask] = last_te
@@ -108,8 +113,8 @@ def main(input_file, overwrite=False, verbose=False):
 
         plt.axes((0.125, 0.11, 0.775, 0.72))
         for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask & (~inj_mask), "Others (only 1st hit after inj.)"),
-                           ((~inj_mask) & (~first_hit_after_inj_mask), "All other hits")]:
+                           (first_hit_after_inj_mask & (~inj_mask), "Other pixels, 1st readout cycle after inj."),
+                           ((~inj_mask) & (~first_hit_after_inj_mask), "Other pixels, remaining hits")]:
             plt.hist(delta_ts[mask] / TS_CLK, bins=700, range=[0, 280], histtype='step', label=name)
         plt.title("$\\Delta$timestamp from last injection")
         plt.xlabel("$\\Delta$timestamp [μs]")
@@ -126,8 +131,8 @@ def main(input_file, overwrite=False, verbose=False):
 
         plt.axes((0.125, 0.11, 0.775, 0.72))
         for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask & (~inj_mask), "Others (only 1st hit after inj.)"),
-                           ((~inj_mask) & (~first_hit_after_inj_mask), "All other hits")]:
+                           (first_hit_after_inj_mask & (~inj_mask), "Other pixels, 1st readout cycle after inj."),
+                           ((~inj_mask) & (~first_hit_after_inj_mask), "Other pixels, remaining hits")]:
             plt.hist(delta_ts[mask] / TS_CLK, bins=80, range=[-0.0125, 2-0.0125], histtype='step', label=name)
         plt.title("$\\Delta$timestamp from last injection")
         plt.xlabel("$\\Delta$timestamp [μs]")
@@ -143,8 +148,8 @@ def main(input_file, overwrite=False, verbose=False):
         pdf.savefig(); plt.clf()
 
         for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask & (~inj_mask), "Others (only 1st hit after inj.)"),
-                           ((~inj_mask) & (~first_hit_after_inj_mask), "All other hits")]:
+                           (first_hit_after_inj_mask & (~inj_mask), "Other pixels, 1st readout cycle after inj."),
+                           ((~inj_mask) & (~first_hit_after_inj_mask), "Other pixels, remaining hits")]:
             plt.hist(delta_le[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("$\\Delta$LE from last injection")
         plt.xlabel("$\\Delta$LE [25 ns]")
@@ -155,8 +160,8 @@ def main(input_file, overwrite=False, verbose=False):
         pdf.savefig(); plt.clf()
 
         for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask & (~inj_mask), "Others (only 1st hit after inj.)"),
-                           ((~inj_mask) & (~first_hit_after_inj_mask), "All other hits")]:
+                           (first_hit_after_inj_mask & (~inj_mask), "Other pixels, 1st readout cycle after inj."),
+                           ((~inj_mask) & (~first_hit_after_inj_mask), "Other pixels, remaining hits")]:
             plt.hist(delta_le_te[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
         plt.title("LE - TE of last injection")
         plt.xlabel("LE - TE$_{inj}$ [25 ns]")
