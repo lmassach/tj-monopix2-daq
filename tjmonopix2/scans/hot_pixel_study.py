@@ -11,14 +11,20 @@ from tjmonopix2.system.scan_base import ScanBase
 
 scan_configuration = {
     # Pixels to enable
-    'start_column': 219,
-    'stop_column': 220,
-    'start_row': 161,
-    'stop_row': 162,
+    'start_column': 222,
+    'stop_column': 222,
+    'start_row': 188,
+    'stop_row': 188,
+
+    #'start_column': 219,
+    #'stop_column': 220,
+    #'start_row': 161,
+    #'stop_row': 162,
+
 
     # Pixel to inject
-    'inj_col': 217,
-    'inj_row': 140,
+    'inj_col': 217, # 220
+    'inj_row': 140, # 200
 
     'n_injections': 10000,
 }
@@ -29,18 +35,28 @@ register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
     'VRESET': 143,  # Default 143
-    'ICASN': 200,  # Default 0
+    'ICASN': 150,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
     'ITUNE': 53,  # Default 53
 
-    'FREEZE_START_CONF': 1,  # Default 1
-    'READ_START_CONF': 3,  # Default 3
-    'READ_STOP_CONF': 5,  # Default 5
-    'LOAD_CONF': 59,  # Default 7
-    'FREEZE_STOP_CONF': 60,  # Default 8
-    'STOP_CONF': 60,  # Default 8
+    # set readout cycle timing as in TB
+    'FREEZE_START_CONF': 41,  # Default 1, TB 41
+    'READ_START_CONF': 81,  # Default 3, TB 81
+    'READ_STOP_CONF': 85,  # Default 5, TB 85
+    'LOAD_CONF': 119,  # Default 7, TB 119
+    'FREEZE_STOP_CONF': 120,  # Default 8, TB 120
+    'STOP_CONF': 120  # Default 8, TB 120
+
+    #'FREEZE_START_CONF': 10,  # Default 1
+    #'READ_START_CONF': 20,  # Default 3
+    #'READ_STOP_CONF': 28,  # Default 5
+    #'LOAD_CONF': 30,  # Default 7
+    #'FREEZE_STOP_CONF': 31,  # Default 8
+    #'STOP_CONF': 31  # Default 8
+
+
 }
 
 
@@ -57,7 +73,16 @@ class HotPixelScan(ScanBase):
         self.chip.masks['injection'][inj_col,inj_row] = True
         # self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100  # TDAC=4 for threshold tuning
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 4
+        self.chip.masks['tdac'][inj_col,inj_row] = 4
+        #self.chip.masks['tdac'][217,140] = 4
         # self.chip.masks['tdac'][219,161] = 1
+
+        self.chip.masks['enable'][222,188] = True # enable an hot pixel
+        self.chip.masks['tdac'][222,188] = 4
+        #self.chip.masks['enable'][218,155] = True # enable an hot pixel
+        #self.chip.masks['tdac'][218,155] = 4
+        #self.chip.masks['enable'][219,192] = True # enable 3 hot pixel
+        #self.chip.masks['tdac'][219,192] = 4
 
         # Disable W8R13 bad/broken columns (25, 160, 161, 224, 274, 383-414 included, 447) and pixels
         self.chip.masks['enable'][25,:] = False  # Many pixels don't fire

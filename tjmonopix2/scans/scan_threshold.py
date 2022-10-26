@@ -12,10 +12,10 @@ from tqdm import tqdm
 from plotting_scurves import Plotting
 
 scan_configuration = {
-    'start_column': 216,
-    'stop_column': 230,
-    'start_row': 120,
-    'stop_row': 220,
+    'start_column': 221, # 216
+    'stop_column': 223, #230
+    'start_row': 120, #120
+    'stop_row': 220, #220
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
@@ -30,11 +30,11 @@ register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
     'VRESET': 143,  # Default 143
-    'ICASN': 0,  # Default 0
+    'ICASN': 150,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
-    "IDB": 100,  # Default 100
-    'ITUNE': 53,  # Default 53
+    "IDB": 124,  # Default 100
+    'ITUNE': 100,  # Default 53
     # Enable VL and VH measurement and override
     # 'MON_EN_VH': 0,
     # 'MON_EN_VL': 0,
@@ -48,7 +48,16 @@ register_overrides = {
     'ANAMONIN_SFN2_L': 0b1000,
     'ANAMONIN_SFP_L': 0b1000,
     # Enable hitor
-    'SEL_PULSE_EXT_CONF': 0
+    'SEL_PULSE_EXT_CONF': 0,
+
+    # set readout cycle timing as in TB
+    'FREEZE_START_CONF': 1,  # Default 1, TB 41
+    'READ_START_CONF': 3,  # Default 3, TB 81
+    'READ_STOP_CONF': 5,  # Default 5, TB 85
+    'LOAD_CONF': 7,  # Default 7, TB 119
+    'FREEZE_STOP_CONF': 8,  # Default 8, TB 120
+    'STOP_CONF': 8  # Default 8, TB 120
+
 }
 
 
@@ -62,10 +71,14 @@ class ThresholdScan(ScanBase):
         self.chip.masks['injection'][:,:] = False
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
-        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100  # TDAC=4 for threshold tuning
-        #self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b111  # TDAC=7
-        # self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 7  # TDAC=1
-        # self.chip.masks['tdac'][220:222,159] = 1  # TDAC=1
+        # self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100  # TDAC=1 as test, TDAC=4 for threshold tuning 0b100
+        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b110  # TDAC=6
+        # self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 7  # TDAC=7 DONT USE DECIMAL!!!!
+        # self.chip.masks['tdac'][220:222,159] = 1  # TDAC=1 TDAC=1 DONT USE DECIMAL!!!!
+        #self.chip.masks['tdac'][222,188] = 0b111  # TDAC=7 for hot pixels
+        #self.chip.masks['tdac'][221,105] = 0b111  # TDAC=7 for hot pixels
+        #self.chip.masks['tdac'][221,174] = 0b111  # TDAC=7 for hot pixels
+
 
         # Disable W8R13 bad/broken columns (25, 160, 161, 224, 274, 383-414 included, 447) and pixels
         self.chip.masks['enable'][25,:] = False  # Many pixels don't fire
@@ -77,6 +90,7 @@ class ThresholdScan(ScanBase):
         self.chip.masks['enable'][75,159] = False
         self.chip.masks['enable'][163,219] = False
         self.chip.masks['enable'][427,259] = False
+        self.chip.masks['enable'][219,161] = False # disable hottest pixel on chip
 
         # # Noisy/hot W8R13 pixels
         # for col, row in [(219, 161), (222, 188), (219, 192), (219, 129), (221, 125), (219, 190), (220, 205), (220, 144), (220, 168), (219, 179), (221, 136), (222, 186), (219, 163), (221, 205), (226, 135), (222, 174), (221, 199), (222, 185), (221, 203), (225, 181), (220, 123), (222, 142), (223, 143), (220, 154), (221, 149), (221, 179), (222, 120), (219, 125)] \

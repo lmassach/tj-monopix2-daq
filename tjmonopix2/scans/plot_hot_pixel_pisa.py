@@ -47,7 +47,7 @@ def main(input_file, overwrite=False, verbose=False):
             print("\x1b[1mRow  Col   LE   TE  ΔLE  ΔTE   ΔTS[25ns]  TS[25ns]\x1b[0m")
             pu, pl, pt = np.nan, np.nan, np.nan
             for cnt, (r, c, l, t, u, i) in enumerate(zip(hits["row"], hits["col"], hits["le"], hits["te"], hits["timestamp"], inj_mask)):
-                if cnt > 100:
+                if cnt > 200:
                     break
                 u = (u - hits["timestamp"][0]) / TS_CLK / 25e-3
                 color = "\x1b[32m" if i else ""
@@ -186,8 +186,8 @@ def main(input_file, overwrite=False, verbose=False):
         plt.grid()
         plt.legend()
         pdf.savefig()
-        plt.xlim(-1, 21)
-        plt.ylim(0, (h[:21].max() + 1) * 1.2)
+        plt.xlim(-1, 60)
+        plt.ylim(0, (h[:60].max() + 1) * 1.2)
         pdf.savefig(); plt.clf()
 
         # Frames ("photos" of pixels that fire with the same timestamp, i.e. read at the same time)
