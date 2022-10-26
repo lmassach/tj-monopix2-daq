@@ -9,7 +9,8 @@ from tjmonopix2.analysis import analysis
 from tjmonopix2.scans.shift_and_inject import get_scan_loop_mask_steps, shift_and_inject
 from tjmonopix2.system.scan_base import ScanBase
 from tqdm import tqdm
-from plotting_scurves import Plotting
+import tables as tb
+import numpy as np
 
 scan_configuration = {
     'start_column': 218, # 216
@@ -23,7 +24,8 @@ scan_configuration = {
     'VCAL_LOW_stop': 65,
     'VCAL_LOW_step': -1,
 
-    'reset_bcid': False  # Reset BCID counter before every injection
+    'reset_bcid': False,  # Reset BCID counter before every injection
+    'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
 }
 
 register_overrides = {
@@ -64,7 +66,7 @@ register_overrides = {
 class ThresholdScan(ScanBase):
     scan_id = 'threshold_scan'
 
-    def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, **_):
+    def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, load_tdac_from=None, **_):
         # Setting the enable mask to False is equivalent to setting tdac to 0 = 0b000
         # This prevents the discriminator from firing, but we are not sure whether it disables the analog FE or not
         self.chip.masks['enable'][:,:] = False
@@ -80,6 +82,16 @@ class ThresholdScan(ScanBase):
         #self.chip.masks['tdac'][221,105] = 0b111  # TDAC=7 for hot pixels
         #self.chip.masks['tdac'][221,174] = 0b111  # TDAC=7 for hot pixels
 
+        # Load TDAC from h5 file (optional)
+        if load_tdac_from:
+            with tb.open_file(load_tdac_from) as f:
+                file_tdac = f.root.configuration_out.chip.masks.tdac[:]
+                file_tdac = file_tdac[start_column:stop_column, start_row:stop_row]
+                # Do not replace TDAC values with zeros from the file, use the default for those pixels
+                self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = \
+                    np.where(
+                        file_tdac != 0, file_tdac,
+                        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row])
 
         # Disable W8R13 bad/broken columns (25, 160, 161, 224, 274, 383-414 included, 447) and pixels
         self.chip.masks['enable'][25,:] = False  # Many pixels don't fire
