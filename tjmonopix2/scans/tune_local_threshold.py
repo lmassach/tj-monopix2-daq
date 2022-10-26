@@ -18,16 +18,50 @@ from tjmonopix2.scans.shift_and_inject import shift_and_inject, get_scan_loop_ma
 from tjmonopix2.analysis import online as oa
 
 scan_configuration = {
-    'start_column': 0,
-    'stop_column': 64,
-    'start_row': 0,
-    'stop_row': 512,
+    'start_column': 218, # 216
+    'stop_column': 223, #230
+    'start_row': 120, #120
+    'stop_row': 220, #220
 
     'n_injections': 100,
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 55
+    'VCAL_HIGH': 83
+}
+
+register_overrides = {
+    'ITHR': 64,  # Default 64
+    'IBIAS': 50,  # Default 50
+    'VRESET': 143,  # Default 143
+    'ICASN': 150,  # Default 0
+    'VCASP': 93,  # Default 93
+    "VCASC": 228,  # Default 228
+    "IDB": 100,  # Default 100
+    'ITUNE': 100,  # Default 53
+
+    # Enable VL and VH measurement and override
+    # 'MON_EN_VH': 0,
+    # 'MON_EN_VL': 0,
+    # 'OVR_EN_VH': 0,
+    # 'OVR_EN_VL': 0,
+    # Enable analog monitoring pixel
+    'EN_PULSE_ANAMON_L': 1,
+    'ANAMON_SFN_L': 0b0001,
+    'ANAMON_SFP_L': 0b1000,
+    'ANAMONIN_SFN1_L': 0b1000,
+    'ANAMONIN_SFN2_L': 0b1000,
+    'ANAMONIN_SFP_L': 0b1000,
+    # Enable hitor
+    'SEL_PULSE_EXT_CONF': 0,
+
+    # set readout cycle timing as in TB
+    'FREEZE_START_CONF': 1,  # Default 1, TB 41
+    'READ_START_CONF': 3,  # Default 3, TB 81
+    'READ_STOP_CONF': 5,  # Default 5, TB 85
+    'LOAD_CONF': 7,  # Default 7, TB 119
+    'FREEZE_STOP_CONF': 8,  # Default 8, TB 120
+    'STOP_CONF': 8  # Default 8, TB 120
 }
 
 
@@ -60,6 +94,9 @@ class TDACTuning(ScanBase):
 
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
+
+        for r in self.register_overrides:
+            self.chip.registers[r].write(self.register_overrides[r])
 
         self.chip.registers["VL"].write(VCAL_LOW)
         self.chip.registers["VH"].write(VCAL_HIGH)
@@ -102,14 +139,14 @@ class TDACTuning(ScanBase):
             self.log.info('Use default TDAC mask (TDAC steps = {0})'.format(steps))
 
         self.log.info('Searching optimal local threshold settings')
-        pbar = tqdm(total=get_scan_loop_mask_steps(self.chip) * len(steps), unit=' Mask steps')
+        pbar = tqdm(total=get_scan_loop_mask_steps(self) * len(steps), unit=' Mask steps')
         for scan_param, step in enumerate(steps):
             # Set new TDACs
             self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = self.data.tdac_map[start_column:stop_column, start_row:stop_row]
             self.chip.masks.update()
             # Inject target charge
             with self.readout(scan_param_id=scan_param, callback=self.analyze_data_online):
-                shift_and_inject(chip=self.chip, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param, reset_bcid=True)
+                shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param, reset_bcid=True)
             # Get hit occupancy using online analysis
             occupancy = self.data.hist_occ.get()
 
@@ -124,7 +161,7 @@ class TDACTuning(ScanBase):
             self.data.tdac_map[smaller_occ_and_not_stuck_sel] -= step  # Decrease threshold
 
             # Make sure no invalid TDACs are used
-            self.data.tdac_map[:, :] = np.clip(self.data.tdac_map[:, :], 1, 7)
+            self.data.tdac_map[:, :] = np.clip(self.data.tdac_map[:, :], 1, 6)
 
         # Finally use TDAC value which yielded the closest to target occupancy
         self.data.tdac_map[:, :] = best_results_map[:, :, 0]
@@ -153,5 +190,5 @@ class TDACTuning(ScanBase):
 
 
 if __name__ == '__main__':
-    with TDACTuning(scan_config=scan_configuration) as tuning:
+    with TDACTuning(scan_config=scan_configuration, register_overrides=register_overrides) as tuning:
         tuning.start()
