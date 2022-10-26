@@ -3,14 +3,18 @@ import re
 import os
 import subprocess
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.cm
+import matplotlib.colors
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 import tables as tb
 
 __all__ = [
-    'FRONTENDS', 'get_config_dict', 'split_long_text', 'get_commit',
-    'draw_summary', 'set_integer_ticks', 'integer_ticks_colorbar',
-    'frontend_names_on_top', 'groupwise', 'is_single_hit_event']
+    'FRONTENDS', 'TDAC_CMAP', 'get_config_dict', 'split_long_text',
+    'get_commit', 'draw_summary', 'set_integer_ticks',
+    'integer_ticks_colorbar', 'frontend_names_on_top', 'groupwise',
+    'is_single_hit_event']
 
 FRONTENDS = [
     # First col (included), last col (included), name
@@ -18,6 +22,8 @@ FRONTENDS = [
     (224, 447, 'Cascode'),
     (448, 479, 'HV Casc.'),
     (480, 511, 'HV')]
+
+TDAC_CMAP = mpl.colors.ListedColormap([mpl.cm.viridis(x/7) for x in range(8)])
 
 
 def get_config_dict(h5_file):

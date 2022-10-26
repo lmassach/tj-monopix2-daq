@@ -26,14 +26,19 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
     tot2d = np.zeros((512, 512))
     counts2d16 = np.zeros((32, 32))
     cfg = []
+    tdac = []
     n_total_hits = 0
 
     for input_file in tqdm(input_files, disable=len(input_files)<2):
         print("Processing", input_file)
         with tb.open_file(input_file) as f:
             cfg.append(get_config_dict(f))
+            tdac.append(f.root.configuration_out.chip.masks.tdac[:])
 
-            n_hits = f.root.Dut.shape[0]
+            try:
+                n_hits = f.root.Dut.shape[0]
+            except tb.NoSuchNodeError:
+                continue
             n_total_hits += n_hits
 
             # Process one chunk of data at a time
@@ -87,8 +92,27 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
             plt.gca().set_axis_off()
             pdf.savefig(); plt.clf()
 
-        for input_file, c in zip(input_files, cfg):
+        for input_file, c, t in zip(input_files, cfg, tdac):
             draw_summary(input_file, c)
+            pdf.savefig(); plt.clf()
+
+            # TDAC map
+            plt.axes((0.125, 0.11, 0.775, 0.72))
+            nzc, nzr = np.nonzero(t)
+            if not nzc.size:
+                fc, lc, fr, lr = 0, 512, 0, 512
+            else:
+                fc, lc = nzc.min(), nzc.max() + 1
+                fr, lr = nzr.min(), nzr.max() + 1
+            del nzc, nzr
+            plt.pcolormesh(np.arange(fc, lc + 1), np.arange(fr, lr + 1),
+                           t[fc:lc, fr:lr].transpose(),
+                           vmin=-0.5, vmax=7.5, cmap=TDAC_CMAP, rasterized=True)
+            plt.xlabel("Column")
+            plt.ylabel("Row")
+            plt.title("Map of TDAC values")
+            frontend_names_on_top()
+            integer_ticks_colorbar().set_label("TDAC")
             pdf.savefig(); plt.clf()
         # print("Summary")
 
