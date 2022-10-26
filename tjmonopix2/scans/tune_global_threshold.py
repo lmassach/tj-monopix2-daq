@@ -31,7 +31,7 @@ scan_configuration = {
 
     # This setting does not have to be changed, it only allows (slightly) faster retuning
     # E.g.: gdac_value_bits = [3, 2, 1, 0] uses the 4th, 3rd, 2nd, and 1st GDAC value bit.
-    # GDAC is not an existing DAC, its value is mapped to ITHR currently
+    # GDAC is not an existing DAC, its value is mapped to ICASN currently
     'gdac_value_bits': range(6, -1, -1)
 }
 
@@ -148,7 +148,7 @@ class GDACTuning(ScanBase):
                 best_gdacs, best_gdac_offset = update_best_gdacs(mean_occ, best_gdacs, best_gdac_offset)
         self.data.pbar.close()
 
-        self.log.success('Optimal ITHR value is {0:1.0f} with mean occupancy {1:1.0f}'.format(best_gdacs, int(mean_occ)))
+        self.log.success('Optimal ICASN value is {0:1.0f} with mean occupancy {1:1.0f}'.format(best_gdacs, int(mean_occ)))
 
         # Set final result
         self.data.best_gdacs = best_gdacs
