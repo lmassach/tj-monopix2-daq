@@ -36,11 +36,11 @@ register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
     'VRESET': 143,  # Default 143
-    'ICASN': 152,  # Default 0
+    'ICASN': 150,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
-    'ITUNE': 53,  # Default 53
+    'ITUNE': 100,  # Default 53
 
     # # set readout cycle timing as in TB
     # 'FREEZE_START_CONF': 41,  # Default 1, TB 41

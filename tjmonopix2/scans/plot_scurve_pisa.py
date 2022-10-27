@@ -140,7 +140,7 @@ def main(input_file, overwrite=False):
         noisy_indices = tuple(x[srt] for x in noisy_indices)
         noisy_list = noisy_list[srt]
         if len(noisy_list):
-            mi = min(len(noisy_list), 100)
+            mi = min(len(noisy_list), 25)
             tmp = "\n".join(
                 ",    ".join(f"({a}, {b}) = {float(c):.1f}" for (a, b), c in g)
                 for g in groupwise(zip(noisy_list[:mi], max_occu[tuple(x[:mi] for x in noisy_indices)]), 4))

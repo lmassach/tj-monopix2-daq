@@ -13,7 +13,7 @@ import tables as tb
 import numpy as np
 
 scan_configuration = {
-    'start_column': 218, # 216
+    'start_column': 213, # 216
     'stop_column': 223, #230
     'start_row': 120, #120
     'stop_row': 220, #220
@@ -25,18 +25,19 @@ scan_configuration = {
     'VCAL_LOW_step': -1,
 
     'reset_bcid': False,  # Reset BCID counter before every injection
-    'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
+    # 'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
+    'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221027_175016_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
 }
 
 register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
-    'VRESET': 143,  # Default 143
-    'ICASN': 150,  # Default 0
+    'VRESET': 110,  # Default 143
+    'ICASN': 200,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
-    'ITUNE': 100,  # Default 53
+    'ITUNE': 150,  # Default 53
     # Enable VL and VH measurement and override
     # 'MON_EN_VH': 0,
     # 'MON_EN_VL': 0,
