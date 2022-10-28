@@ -62,7 +62,7 @@ class AnalogScan(ScanBase):
         pbar = tqdm(total=get_scan_loop_mask_steps(self), unit='Mask steps', delay=0.1)
         with self.readout(scan_param_id=0):
             shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=0)
-        pbar.set_postfix(f"{self.raw_data_earray.nrows/max(1,time.time()-pbar.start_t):.3g} words/s")
+        pbar.set_postfix_str(f"{self.raw_data_earray.nrows/max(1,time.time()-pbar.start_t):.3g} words/s")
         pbar.close()
 
         ret = {}
