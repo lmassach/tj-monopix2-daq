@@ -9,6 +9,8 @@
     Finds the optimum global threshold value for target threshold using binary search.
 '''
 
+import time
+
 import numpy as np
 from tqdm import tqdm
 
@@ -181,7 +183,7 @@ class GDACTuning(ScanBase):
         sel_pixel[self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row] = True
 
         self.log.info('Searching optimal global threshold setting.')
-        self.data.pbar = tqdm(total=len(gdac_value_bits) * self.chip.masks.get_mask_steps() * 2, unit=' Mask steps')
+        self.data.pbar = tqdm(total=len(gdac_value_bits) * self.chip.masks.get_mask_steps() * 2, unit=' Mask steps', delay=0.1)
         for scan_param_id in range(len(gdac_value_bits)):
             # Set the GDAC bit in all flavours
             gdac_bit = gdac_value_bits[scan_param_id]
@@ -235,6 +237,7 @@ class GDACTuning(ScanBase):
         # Inject target charge
         with self.readout(scan_param_id=scan_param_id, callback=self.analyze_data_online):
             shift_and_inject(scan=self, n_injections=n_injections, pbar=self.data.pbar, scan_param_id=scan_param_id, reset_bcid=bcid_reset)
+        self.data.pbar.set_postfix_str(f"{self.raw_data_earray.nrows/max(1,time.time()-self.data.pbar.start_t):.3g} words/s")
         # Get hit occupancy using online analysis
         occupancy = self.data.hist_occ.get()
 
