@@ -15,25 +15,25 @@ from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.analysis import analysis
 
 scan_configuration = {
-    'start_column': 218,
-    'stop_column': 221,
+    'start_column': 213,
+    'stop_column': 223,
     'start_row': 120,
     'stop_row': 220,
 
-    'scan_time': 5,  # seconds
-    'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
-    # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221027_175016_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    'scan_time': 60,  # seconds
+    # 'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
+    'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning_interpreted.h5",  # Optional h5 file to load the TDAC values from
 }
 
 register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
-    'VRESET': 143,  # Default 143
-    'ICASN': 90,  # Default 0
+    'VRESET': 110,  # Default 143
+    'ICASN': 200,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
-    'ITUNE': 53,  # Default 53
+    'ITUNE': 150,  # Default 53
 }
 
 registers = ['IBIAS', 'ICASN', 'IDB', 'ITUNE', 'ITHR', 'ICOMP', 'IDEL', 'VRESET', 'VCASP', 'VH', 'VL', 'VCLIP', 'VCASC', 'IRAM']

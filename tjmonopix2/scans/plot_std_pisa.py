@@ -150,7 +150,8 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         #plt.ylim(0, max(h[10:].max() for h in tot1d) * 1.2)
         plt.grid(axis='y')
         if log_tot:
-            plt.ylim(0.9, max(h[10:120].max() for h in tot1d) * 1.2)
+            # plt.ylim(0.9, max(h[10:120].max() for h in tot1d) * 1.2)
+            plt.ylim(0.9, max(h.max() for h in tot1d) * 1.2)
             plt.yscale('log')
             set_integer_ticks(plt.gca().xaxis)
         else:
