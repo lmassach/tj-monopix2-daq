@@ -10,6 +10,8 @@
     Iteratively inject target charge and evaluate if more or less than 50% of expected hits are seen in any pixel
 '''
 
+import time
+
 from tqdm import tqdm
 import numpy as np
 
@@ -179,7 +181,7 @@ class TDACTuning(ScanBase):
             self.log.info('Use default TDAC mask (TDAC steps = {0})'.format(steps))
 
         self.log.info('Searching optimal local threshold settings')
-        pbar = tqdm(total=get_scan_loop_mask_steps(self) * len(steps), unit=' Mask steps')
+        pbar = tqdm(total=get_scan_loop_mask_steps(self) * len(steps), unit=' Mask steps', delay=0.1)
         for scan_param, step in enumerate(steps):
             # print(f"Iteration {scan_param}")
             # Set new TDACs
@@ -189,6 +191,7 @@ class TDACTuning(ScanBase):
             # Inject target charge
             with self.readout(scan_param_id=scan_param, callback=self.analyze_data_online):
                 shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param, reset_bcid=bcid_reset)
+            pbar.set_postfix_str(f"{self.raw_data_earray.nrows/max(1,time.time()-pbar.start_t):.3g} words/s")
             # Get hit occupancy using online analysis
             occupancy = self.data.hist_occ.get()
             # print("Occupancy =", occupancy[start_column:stop_column, start_row:stop_row])

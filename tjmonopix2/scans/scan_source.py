@@ -122,6 +122,7 @@ class SourceScan(ScanBase):
                 last_time = now
                 now = time.time()
                 pbar.update(int(round(now - last_time)))
+                pbar.set_postfix_str(f"{self.raw_data_earray.nrows/max(1,time.time()-pbar.start_t):.3g} words/s")
         pbar.close()
 
         self.log.success('Scan finished')

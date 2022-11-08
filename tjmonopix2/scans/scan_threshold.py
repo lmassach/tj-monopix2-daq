@@ -5,12 +5,15 @@
 # ------------------------------------------------------------
 #
 
+import time
+
+import tables as tb
+import numpy as np
+
 from tjmonopix2.analysis import analysis
 from tjmonopix2.scans.shift_and_inject import get_scan_loop_mask_steps, shift_and_inject
 from tjmonopix2.system.scan_base import ScanBase
 from tqdm import tqdm
-import tables as tb
-import numpy as np
 
 scan_configuration = {
     'start_column': 0, # 216
@@ -175,6 +178,8 @@ class ThresholdScan(ScanBase):
             self.store_scan_par_values(scan_param_id=scan_param_id, vcal_high=VCAL_HIGH, vcal_low=vcal_low)
             with self.readout(scan_param_id=scan_param_id):
                 shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param_id, reset_bcid=reset_bcid)
+            pbar.set_postfix_str(f"{self.raw_data_earray.nrows/max(1,time.time()-pbar.start_t):.3g} words/s")
+
         pbar.close()
         self.log.success('Scan finished')
 
