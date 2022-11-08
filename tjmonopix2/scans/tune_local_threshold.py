@@ -20,16 +20,16 @@ from tjmonopix2.scans.shift_and_inject import shift_and_inject, get_scan_loop_ma
 from tjmonopix2.analysis import online as oa
 
 scan_configuration = {
-    'start_column': 213, # 216
-    'stop_column': 223, #230
-    'start_row': 120, #120
-    'stop_row': 220, #220
+    'start_column': 0, # 216
+    'stop_column': 224, #230
+    'start_row': 0, #120
+    'stop_row': 512, #220
 
     'n_injections': 100,
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 54,
+    'VCAL_HIGH': 30+24,
 
     'bcid_reset': False,  # BCID reset before injection
 }
@@ -43,7 +43,6 @@ register_overrides = {
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
     'ITUNE': 150,  # Default 53
-
     # Enable VL and VH measurement and override
     # 'MON_EN_VH': 0,
     # 'MON_EN_VL': 0,
@@ -59,7 +58,7 @@ register_overrides = {
     # Enable hitor
     'SEL_PULSE_EXT_CONF': 0,
 
-    # set readout cycle timing as in TB
+    # set readout cycle timing as in TB/or as default in Pisa
     'FREEZE_START_CONF': 1,  # Default 1, TB 41
     'READ_START_CONF': 3,  # Default 3, TB 81
     'READ_STOP_CONF': 5,  # Default 5, TB 85
