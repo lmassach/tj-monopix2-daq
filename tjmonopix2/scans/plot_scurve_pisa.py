@@ -181,7 +181,8 @@ def main(input_file, overwrite=False):
 
         # S-Curve for specific pixels
 #        for col, row in [(219, 161), (219, 160), (220, 160), (221, 160), (220, 159), (221, 159) ,(222,188) , (219,192), (218,155), (216,117), (222,180), (222,170),(221,136),(221,205),(221,174)]:
-        for col, row in [(221, 160),(222,188) , (222,180), (222,170),(221,205),(221,174), (218,155), (218,150), (219,192), (219,180)]:
+        # for col, row in [(221, 160),(222,188) , (222,180), (222,170),(221,205),(221,174), (218,155), (218,150), (219,192), (219,180) , (213,213)]:
+        for col, row in [(213, 213), (217, 150), (214, 149), (218, 155), (213, 121), (213, 122), (214, 121), (217, 122), (218, 123), (219, 120), (222, 120), (219, 117)]:
             if not (col_start <= col < col_stop and row_start <= row < row_stop):
                 continue
             plt.plot(charge_dac_values, occupancy[col-col_start,row-row_start,:], '.-', label=str((col, row)))
@@ -190,7 +191,7 @@ def main(input_file, overwrite=False):
         plt.xlabel("Injected charge [DAC]")
         plt.ylabel("Occupancy")
         plt.ylim(0, 1.5)
-        plt.legend()
+        plt.legend(ncol=2)
         set_integer_ticks(plt.gca().xaxis)
         pdf.savefig(); plt.clf()
 
@@ -205,6 +206,7 @@ def main(input_file, overwrite=False):
             plt.suptitle(f"ToT curve ({name})")
             plt.xlabel("Injected charge [DAC]")
             plt.ylabel("ToT [25 ns]")
+            plt.ylim(0,50)
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
             cb = integer_ticks_colorbar()
             cb.set_label("Hits / bin")
@@ -217,6 +219,12 @@ def main(input_file, overwrite=False):
         # Assuming the shape is an erf, this estimator is consistent
         w = np.maximum(0, 0.5 - np.abs(occupancy - 0.5))
         threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
+        print("Pixels with THR  < 1")
+        for col, row in zip(*np.nonzero(threshold_DAC < 1)):
+            print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+        print("Pixels with THR > 50")
+        for col, row in zip(*np.nonzero(threshold_DAC > 50)):
+            print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
 
         # Threshold hist
         m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))

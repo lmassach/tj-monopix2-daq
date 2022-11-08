@@ -21,19 +21,30 @@ scan_configuration = {
     'n_injections': 100,
     'VCAL_HIGH': 140,
     'VCAL_LOW_start': 139,
-    'VCAL_LOW_stop': 65,
+    'VCAL_LOW_stop': 1,
     'VCAL_LOW_step': -1,
 
     'reset_bcid': False,  # Reset BCID counter before every injection
-    'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
-    # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221027_175016_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    # 'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
+    # file produced w/o BCID
+    # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    # file produced w BCID target THR=20 DAC
+    #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_120241_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    # file produced w BCID target THR=24 DAC
+    # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_120408_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    # file produced w/o BCID target THR=20 DAC and pwell/psub=-6V
+    #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_125629_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    #file produced w/o BCID target THR=20 DAC and pwell/psub=-6V second one redone 2 days later
+    #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221104_101511_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    # File produced w/o BCID reset target=28 DAC pwel/psub=-3V
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221108_164129_local_threshold_tuning_interpreted.h5'
 }
 
 register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
     'VRESET': 110,  # Default 143
-    'ICASN': 224,  # Default 0
+    'ICASN': 200,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
@@ -53,7 +64,7 @@ register_overrides = {
     # Enable hitor
     'SEL_PULSE_EXT_CONF': 0,
 
-    # set readout cycle timing as in TB
+    # set readout cycle timing as in TB/or as default in Pisa
     'FREEZE_START_CONF': 1,  # Default 1, TB 41
     'READ_START_CONF': 3,  # Default 3, TB 81
     'READ_STOP_CONF': 5,  # Default 5, TB 85
