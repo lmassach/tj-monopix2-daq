@@ -18,16 +18,16 @@ from tjmonopix2.scans.shift_and_inject import shift_and_inject, get_scan_loop_ma
 from tjmonopix2.analysis import online as oa
 
 scan_configuration = {
-    'start_column': 213, # 216
-    'stop_column': 223, #230
-    'start_row': 116, #120
-    'stop_row': 220, #220
+    'start_column': 0, # 216
+    'stop_column': 224, #230
+    'start_row': 0, #120
+    'stop_row': 512, #220
 
     'n_injections': 100,
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 30+28,
+    'VCAL_HIGH': 30+24,
 
     'bcid_reset': False,  # BCID reset before injection
 }
