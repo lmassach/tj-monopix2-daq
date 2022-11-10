@@ -190,7 +190,7 @@ def is_single_hit_event(timestamps, window_us=3.2):
         mask = is_single_hit_event(hits["timestamp"])
         single_hits = hits[mask]
     """
-    window = int(window_us * 640)
+    window = int(window_us * 40)
     diff = np.diff(np.concatenate(((-2**63,), timestamps, (2**63-1,))))
     diff_from_previous = diff[:-1]
     diff_from_next = diff[1:]
