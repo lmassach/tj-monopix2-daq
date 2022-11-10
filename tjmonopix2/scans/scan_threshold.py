@@ -16,10 +16,10 @@ from tjmonopix2.system.scan_base import ScanBase
 from tqdm import tqdm
 
 scan_configuration = {
-    'start_column': 0, # 216
-    'stop_column': 224, #230
-    'start_row': 0, #120
-    'stop_row': 512, #220
+    'start_column': 213, # 213
+    'stop_column': 223, # 223
+    'start_row': 120, # 120
+    'stop_row': 220, # 220
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
@@ -29,22 +29,25 @@ scan_configuration = {
 
     'reset_bcid': False,  # Reset BCID counter before every injection
     # 'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
+
     # file produced w/o BCID
-    # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+
     # file produced w BCID target THR=20 DAC
-    #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_120241_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_120241_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
     # file produced w BCID target THR=24 DAC
     # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_120408_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
     # file produced w/o BCID target THR=20 DAC and pwell/psub=-6V
-    #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_125629_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
-    #file produced w/o BCID target THR=20 DAC and pwell/psub=-6V second one redone 2 days later
-    #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221104_101511_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_125629_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    # file produced w/o BCID target THR=20 DAC and pwell/psub=-6V second one redone 2 days later
+    # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-04/chip_0/20221104_101511_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
     # File produced w/o BCID reset target=28 DAC pwel/psub=-3V
-    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221108_164129_local_threshold_tuning_interpreted.h5'
+    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-08/chip_0/20221108_164129_local_threshold_tuning_interpreted.h5'
+
     # File produced w/o BCID reset target=24 DAC pwel/psub=-6V
-    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221108_171021_local_threshold_tuning_interpreted.h5'
+    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-08/chip_0/20221108_171021_local_threshold_tuning_interpreted.h5'
     # File produced w/o BCID reset target=24 DAC pwel/psub=-6V whole normal FE
-    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221108_172457_local_threshold_tuning_interpreted.h5'
+    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-08/chip_0/20221108_172457_local_threshold_tuning_interpreted.h5'
 }
 
 register_overrides = {
@@ -171,7 +174,7 @@ class ThresholdScan(ScanBase):
         self.chip.registers["VH"].write(VCAL_HIGH)
         vcal_low_range = range(VCAL_LOW_start, VCAL_LOW_stop, VCAL_LOW_step)
 
-        pbar = tqdm(total=get_scan_loop_mask_steps(self) * len(vcal_low_range), unit='Mask steps', smoothing=0, delay=0.1)
+        pbar = tqdm(total=get_scan_loop_mask_steps(self) * len(vcal_low_range), unit=' mask steps', smoothing=0, delay=0.1)
         for scan_param_id, vcal_low in enumerate(vcal_low_range):
             self.chip.registers["VL"].write(vcal_low)
 
