@@ -197,6 +197,8 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         for i, j in product(range(0, 512, ZOOM_STEP), range(0, 512, ZOOM_STEP)):
             i1 = min(i+ZOOM_STEP, 512)
             j1 = min(j+ZOOM_STEP, 512)
+            if not np.any(counts2d[i:i1,j:j1]):
+                continue
             plt.pcolormesh(counts2d_edges[i:i1+1], counts2d_edges[j:j1+1], counts2d[i:i1,j:j1].transpose(),
                            vmin=0, vmax=m, rasterized=True)  # Necessary for quick save and view in PDF
             plt.title("Hit map (subregion)")
@@ -228,6 +230,8 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         for i, j in product(range(0, 512, ZOOM_STEP), range(0, 512, ZOOM_STEP)):
             i1 = min(i+ZOOM_STEP, 512)
             j1 = min(j+ZOOM_STEP, 512)
+            if not np.any(counts2d[i:i1,j:j1]):
+                continue
             plt.pcolormesh(tot2d_edges[i:i1+1], tot2d_edges[j:j1+1], totavg[i:i1,j:j1].transpose(),
                            vmin=-0.5, vmax=25.5, rasterized=True)  # Necessary for quick save and view in PDF
             plt.title("Average ToT map (subregion)")
