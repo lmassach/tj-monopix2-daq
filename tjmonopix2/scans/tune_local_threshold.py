@@ -191,7 +191,7 @@ class TDACTuning(ScanBase):
             # Inject target charge
             with self.readout(scan_param_id=scan_param, callback=self.analyze_data_online):
                 shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param, reset_bcid=bcid_reset)
-            pbar.set_postfix_str(f"{self.raw_data_earray.nrows/max(1,time.time()-pbar.start_t):.3g} words/s")
+            self.update_pbar_with_word_rate(pbar)
             # Get hit occupancy using online analysis
             occupancy = self.data.hist_occ.get()
             # print("Occupancy =", occupancy[start_column:stop_column, start_row:stop_row])

@@ -124,7 +124,7 @@ class ChipContainer:
 
     def __init__(self, name, chip_settings, chip_conf, module_settings, output_filename, output_dir, log_fh, scan_config, suffix=''):
         self.name = name
-        
+
         self.chip_settings = chip_settings  # chip settings from testbench; not to be confused with self.chip_settings['chip_config_file']
         self.module_settings = module_settings  # module configuration of this chip from testbench
         self.chip_conf = chip_conf  # configuration object for chip
@@ -217,7 +217,7 @@ class ScanBase(object):
         self.hardware_initialized = False
         self.initialized = False
         self.register_overrides = register_overrides
-        
+
         self.daq = None  # readout system, defined during scan init if not existing
 
         # Needed for parallel scans where several readout threads change the chip handles
@@ -226,6 +226,10 @@ class ScanBase(object):
         # All chips data containers
         self.chips = {}
         self.suffix = suffix
+
+        # Word rate in the progress bar
+        self.nrows_last = 0
+        self.time_last = 0
 
     def init(self, force=False):
         try:
@@ -1152,6 +1156,21 @@ class ScanBase(object):
             if issubclass(exc[0], fifo_readout.FifoError):
                 self.log.error('Aborting run...')
                 self.fifo_readout.stop_readout.set()
+
+    def update_pbar_with_word_rate(self, pbar):
+        """Writes the current word rate in the postfix of the given progress bar (tqdm object)."""
+        try:
+            nrows_prev = self.nrows_last
+            nrows_now = self.raw_data_earray.nrows
+            if nrows_now < nrows_prev:
+                self.nrows_last = 0
+                return
+            time_prev = max(self.time_last, pbar.start_t)
+            time_now = time.time()
+            self.nrows_last, self.time_last = nrows_now, time_now
+            pbar.set_postfix_str(f"{(nrows_now-nrows_prev)/max(1,time_now-time_prev):.3g} words/s")
+        except Exception:
+            pass
 
 
 if __name__ == '__main__':
