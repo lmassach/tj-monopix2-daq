@@ -16,10 +16,10 @@ from tjmonopix2.system.scan_base import ScanBase
 from tqdm import tqdm
 
 scan_configuration = {
-    'start_column': 213, # 213
-    'stop_column': 223, # 223
-    'start_row': 120, # 120
-    'stop_row': 220, # 220
+    'start_column': 213,  # 213
+    'stop_column': 223,  # 223
+    'start_row': 120,  # 120
+    'stop_row': 220,  # 220
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
@@ -31,7 +31,7 @@ scan_configuration = {
     # 'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
 
     # file produced w/o BCID
-    'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
 
     # file produced w BCID target THR=20 DAC
     # 'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_120241_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
@@ -45,9 +45,12 @@ scan_configuration = {
     # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-08/chip_0/20221108_164129_local_threshold_tuning_interpreted.h5'
 
     # File produced w/o BCID reset target=24 DAC pwel/psub=-6V
-    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-08/chip_0/20221108_171021_local_threshold_tuning_interpreted.h5'
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-08/chip_0/20221108_171021_local_threshold_tuning_interpreted.h5'
     # File produced w/o BCID reset target=24 DAC pwel/psub=-6V whole normal FE
     # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-08/chip_0/20221108_172457_local_threshold_tuning_interpreted.h5'
+
+    # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=213-223 rows=all
+    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221110_121137_local_threshold_tuning_interpreted.h5'
 }
 
 register_overrides = {
@@ -126,6 +129,8 @@ class ThresholdScan(ScanBase):
         self.chip.masks['enable'][163,219] = False
         self.chip.masks['enable'][427,259] = False
         self.chip.masks['enable'][219,161] = False # disable hottest pixel on chip
+        self.chip.masks['enable'][214,88] = False
+        self.chip.masks['enable'][215,101] = False
 
         # # Noisy/hot W8R13 pixels
         # for col, row in [(219, 161), (222, 188), (219, 192), (219, 129), (221, 125), (219, 190), (220, 205), (220, 144), (220, 168), (219, 179), (221, 136), (222, 186), (219, 163), (221, 205), (226, 135), (222, 174), (221, 199), (222, 185), (221, 203), (225, 181), (220, 123), (222, 142), (223, 143), (220, 154), (221, 149), (221, 179), (222, 120), (219, 125)] \

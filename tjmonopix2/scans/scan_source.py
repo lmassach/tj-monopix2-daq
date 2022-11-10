@@ -72,6 +72,8 @@ class SourceScan(ScanBase):
         self.chip.masks['enable'][163,219] = False
         self.chip.masks['enable'][427,259] = False
         self.chip.masks['enable'][219,161] = False # disable hottest pixel on chip
+        self.chip.masks['enable'][214,88] = False
+        self.chip.masks['enable'][215,101] = False
 
         # # Noisy/hot W8R13 pixels
         # for col, row in [(219, 161), (222, 188), (219, 192), (219, 129), (221, 125), (219, 190), (220, 205), (220, 144), (220, 168), (219, 179), (221, 136), (222, 186), (219, 163), (221, 205), (226, 135), (222, 174), (221, 199), (222, 185), (221, 203), (225, 181), (220, 123), (222, 142), (223, 143), (220, 154), (221, 149), (221, 179), (222, 120), (219, 125)] \

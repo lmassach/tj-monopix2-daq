@@ -20,16 +20,16 @@ from tjmonopix2.scans.shift_and_inject import shift_and_inject, get_scan_loop_ma
 from tjmonopix2.analysis import online as oa
 
 scan_configuration = {
-    'start_column': 0, # 216
-    'stop_column': 224, #230
-    'start_row': 0, #120
-    'stop_row': 512, #220
+    'start_column': 203,  # 213
+    'stop_column': 223,  # 223
+    'start_row': 0,  # 120
+    'stop_row': 512,  # 220
 
     'n_injections': 100,
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 30+24,
+    'VCAL_HIGH': 30+20,
 
     'bcid_reset': False,  # BCID reset before injection
 }
@@ -108,6 +108,8 @@ class TDACTuning(ScanBase):
         self.chip.masks['enable'][163,219] = False
         self.chip.masks['enable'][427,259] = False
         self.chip.masks['enable'][219,161] = False # disable hottest pixel on chip
+        self.chip.masks['enable'][214,88] = False
+        self.chip.masks['enable'][215,101] = False
 
         # # Noisy/hot W8R13 pixels
         # for col, row in [(219, 161), (222, 188), (219, 192), (219, 129), (221, 125), (219, 190), (220, 205), (220, 144), (220, 168), (219, 179), (221, 136), (222, 186), (219, 163), (221, 205), (226, 135), (222, 174), (221, 199), (222, 185), (221, 203), (225, 181), (220, 123), (222, 142), (223, 143), (220, 154), (221, 149), (221, 179), (222, 120), (219, 125)] \
