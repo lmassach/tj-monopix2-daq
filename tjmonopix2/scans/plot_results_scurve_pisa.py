@@ -97,11 +97,11 @@ def main(input_file, overwrite=False):
 
                 # Histograms of time since previous hit vs TOT and QINJ
                 dt_tot_hist[i] += np.histogram2d(
-                    tot[mask][1:], np.diff(hits["timestamp"][mask]) / 640.,
-                    bins=[128, 479], range=[[-0.5, 127.5], [25e-3, 12]])[0]
+                    tot[mask][1:], np.diff(hits["timestamp"][mask]) / 40.,
+                    bins=[128, 479], range=[[-0.5, 127.5], [25e-3*16, 12*16]])[0]
                 dt_q_hist[i] += np.histogram2d(
-                    charge_dac[mask][1:], np.diff(hits["timestamp"][mask]) / 640.,
-                    bins=[charge_dac_bins, 479], range=[charge_dac_range, [25e-3, 12]])[0]
+                    charge_dac[mask][1:], np.diff(hits["timestamp"][mask]) / 40.,
+                    bins=[charge_dac_bins, 479], range=[charge_dac_range, [25e-3*16, 12*16]])[0]
 
     # Do the actual plotting
     with PdfPages(output_file) as pdf:
