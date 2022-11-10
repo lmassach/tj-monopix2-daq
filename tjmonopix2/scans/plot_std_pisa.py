@@ -4,6 +4,7 @@ import argparse
 import glob
 import os
 import traceback
+from itertools import product
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.cm
 import matplotlib.pyplot as plt
@@ -179,40 +180,67 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         # print("ToT Hist")
 
         # Hit map
+        cmap = matplotlib.cm.get_cmap("viridis").copy()
+        cmap.set_over("r")
         plt.pcolormesh(counts2d_edges, counts2d_edges, counts2d.transpose(),
-                       vmin=0, vmax=m, rasterized=True)  # Necessary for quick save and view in PDF
+                       vmin=0, vmax=m, cmap=cmap, rasterized=True)  # Necessary for quick save and view in PDF
         plt.title("Hit map")
         plt.xlabel("Col")
         plt.ylabel("Row")
-        plt.xlim(0,448)
-        # plt.xlim(0,50)
         cb = integer_ticks_colorbar()
         cb.set_label("Hits / pixel")
         set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         frontend_names_on_top()
         pdf.savefig(); plt.clf()
+
+        ZOOM_STEP = 64
+        for i, j in product(range(0, 512, ZOOM_STEP), range(0, 512, ZOOM_STEP)):
+            i1 = min(i+ZOOM_STEP, 512)
+            j1 = min(j+ZOOM_STEP, 512)
+            plt.pcolormesh(counts2d_edges[i:i1+1], counts2d_edges[j:j1+1], counts2d[i:i1,j:j1].transpose(),
+                           vmin=0, vmax=m, rasterized=True)  # Necessary for quick save and view in PDF
+            plt.title("Hit map (subregion)")
+            plt.xlabel("Col")
+            plt.ylabel("Row")
+            cb = integer_ticks_colorbar()
+            cb.set_label("Hits / pixel")
+            set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+            frontend_names_on_top()
+            plt.xlim(i, i1)
+            plt.ylim(j, j1)
+            pdf.savefig(); plt.clf()
         # print("Hitmap")
 
         # Map of the average ToT
         with np.errstate(all='ignore'):
             totavg = tot2d / counts2d
-        for i in range(0, 512, 25):
-            plt.pcolormesh(tot2d_edges, tot2d_edges, totavg.transpose(),
-                            vmin=-0.5, vmax=25.5, rasterized=True)  # Necessary for quick save and view in PDF
-            plt.title("Average ToT map")
+        plt.pcolormesh(tot2d_edges, tot2d_edges, totavg.transpose(),
+                       vmin=-0.5, vmax=25.5, rasterized=True)  # Necessary for quick save and view in PDF
+        plt.title("Average ToT map")
+        plt.xlabel("Col")
+        plt.ylabel("Row")
+        cb = integer_ticks_colorbar()
+        cb.set_label("ToT [25 ns]")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        frontend_names_on_top()
+        pdf.savefig(); plt.clf()
+
+        for i, j in product(range(0, 512, ZOOM_STEP), range(0, 512, ZOOM_STEP)):
+            i1 = min(i+ZOOM_STEP, 512)
+            j1 = min(j+ZOOM_STEP, 512)
+            plt.pcolormesh(tot2d_edges[i:i1+1], tot2d_edges[j:j1+1], totavg[i:i1,j:j1].transpose(),
+                           vmin=-0.5, vmax=25.5, rasterized=True)  # Necessary for quick save and view in PDF
+            plt.title("Average ToT map (subregion)")
             plt.xlabel("Col")
             plt.ylabel("Row")
-            #plt.xlim(225,230)
-            # plt.xlim(0,50)
-            # plt.xlim(0,448)
-            plt.xlim(i, min(i+25, 512))
-            plt.ylim(120, 220)
             cb = integer_ticks_colorbar()
             cb.set_label("ToT [25 ns]")
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
             frontend_names_on_top()
+            plt.xlim(i, i1)
+            plt.ylim(j, j1)
             pdf.savefig(); plt.clf()
-            # print("ToT map")
+        # print("ToT map")
 
         # Noisy pixels
         if all(c.get("configuration_in.scan.run_config.scan_id") == "source_scan" for c in cfg):
@@ -261,8 +289,6 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
 
         # Source positioning
         m = np.quantile(counts2d16[counts2d16 > 0], 0.99) * 1.2 if np.any(counts2d > 0) else 1
-        cmap = matplotlib.cm.get_cmap("viridis").copy()
-        cmap.set_over("r")
         plt.pcolormesh(edges16, edges16, counts2d16.transpose(), vmin=0, vmax=m,
                        cmap=cmap, rasterized=True)  # Necessary for quick save and view in PDF
         plt.title("Hit map in 16x16 regions for source positioning")
