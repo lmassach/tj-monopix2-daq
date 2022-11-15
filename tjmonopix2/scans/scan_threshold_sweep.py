@@ -10,10 +10,10 @@ import datetime
 
 
 scan_configuration = {
-    'start_column': 225,
-    'stop_column': 230,
-    'start_row': 120,
-    'stop_row': 420,
+    'start_column': 1,
+    'stop_column': 2,
+    'start_row': 140,
+    'stop_row': 141,
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
@@ -23,18 +23,33 @@ scan_configuration = {
 }
 
 default_register_overrides = {
-    "ITHR": 64,
-    "IBIAS": 50,
-    "ICASN": 0,
-    "VCASP": 93,
-    "VRESET": 143,
-    "VCASC": 228,
-    "IDB": 100,
-    "ITUNE": 53
+    'ITHR': 64,  # Default 64
+    'IBIAS': 50,  # Default 50
+    'VRESET': 143,  # Default 143
+    'ICASN': 150,  # Default 0
+    'VCASP': 93,  # Default 93
+    "VCASC": 228,  # Default 228
+    "IDB": 55,  # Default 100
+    'ITUNE': 150,  # Default 53
+
+    # # set readout cycle timing as in TB
+    # 'FREEZE_START_CONF': 41,  # Default 1, TB 41
+    # 'READ_START_CONF': 81,  # Default 3, TB 81
+    # 'READ_STOP_CONF': 85,  # Default 5, TB 85
+    # 'LOAD_CONF': 119,  # Default 7, TB 119
+    # 'FREEZE_STOP_CONF': 120,  # Default 8, TB 120
+    # 'STOP_CONF': 120  # Default 8, TB 120
+
+    'FREEZE_START_CONF': 10,  # Default 1
+    'READ_START_CONF': 13,  # Default 3
+    'READ_STOP_CONF': 15,  # Default 5
+    'LOAD_CONF': 30,  # Default 7
+    'FREEZE_STOP_CONF': 31,  # Default 8
+    'STOP_CONF': 31  # Default 8
 }
 
 sweeps = {  # REGISTER: (START, STOP, STEP)
-    'ITHR': (20, 41, 20),
+    'IDB': (53, 56, 2),
     #'VRESET': (70, 255, 20),
     #'IBIAS': (20, 60, 5),
     #'VCASP': (3, 255, 10),

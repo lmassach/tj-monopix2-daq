@@ -182,7 +182,7 @@ def main(input_file, overwrite=False):
         # S-Curve for specific pixels
 #        for col, row in [(219, 161), (219, 160), (220, 160), (221, 160), (220, 159), (221, 159) ,(222,188) , (219,192), (218,155), (216,117), (222,180), (222,170),(221,136),(221,205),(221,174)]:
         # for col, row in [(221, 160),(222,188) , (222,180), (222,170),(221,205),(221,174), (218,155), (218,150), (219,192), (219,180) , (213,213)]:
-        for col, row in [(213, 213), (217, 150), (214, 149), (218, 155), (213, 121), (213, 122), (214, 121), (217, 122), (218, 123), (219, 120), (222, 120), (219, 117)]:
+        for col, row in [(180, 127), (190, 120), (181, 164), (210, 165),(213, 213), (217, 150), (214, 149), (218, 155), (213, 121), (213, 122), (214, 121), (217, 122), (218, 123), (219, 120), (222, 120), (219, 117), (0, 127), (1, 140), (1, 152), (1, 173), (1, 210)]:
             if not (col_start <= col < col_stop and row_start <= row < row_stop):
                 continue
             plt.plot(charge_dac_values, occupancy[col-col_start,row-row_start,:], '.-', label=str((col, row)))
@@ -225,6 +225,11 @@ def main(input_file, overwrite=False):
         print("Pixels with THR > 50")
         for col, row in zip(*np.nonzero(threshold_DAC > 50)):
             print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+        print("First 10 pixels with 34 < THR < 36")
+        for i, (col, row) in enumerate(zip(*np.nonzero((34 < threshold_DAC) & (threshold_DAC < 36)))):
+            if i >= 100:
+                break
+            print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
 
         # Threshold hist
         m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
@@ -249,7 +254,7 @@ def main(input_file, overwrite=False):
 
         # Threshold map
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(),
+        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=5, vmax=30,
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Threshold map")

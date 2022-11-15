@@ -27,7 +27,7 @@ scan_configuration = {
     'inj_row': 140, # 200
 
     'n_injections': 10000,
-    'reset_bcid': True,
+    'reset_bcid': False,
 }
 
 register_overrides = {
@@ -39,8 +39,8 @@ register_overrides = {
     'ICASN': 150,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
-    "IDB": 100,  # Default 100
-    'ITUNE': 100,  # Default 53
+    "IDB": 53,  # Default 100
+    'ITUNE': 150,  # Default 53
 
     # # set readout cycle timing as in TB
     # 'FREEZE_START_CONF': 41,  # Default 1, TB 41
@@ -73,14 +73,16 @@ class HotPixelScan(ScanBase):
         # Injected pixel
         self.chip.masks['enable'][inj_col,inj_row] = True
         self.chip.masks['injection'][inj_col,inj_row] = True
-        self.chip.masks['tdac'][inj_col,inj_row] = 0b100
+        self.chip.masks['tdac'][inj_col,inj_row] = 6
 
         # self.chip.masks['enable'][222,188] = True # enable an hot pixel
-        # self.chip.masks['tdac'][222,188] = 0b100
-        self.chip.masks['enable'][218,155] = True # enable an hot pixel
-        self.chip.masks['tdac'][218,155] = 0b100
+        # self.chip.masks['tdac'][222,188] = 4
+        # self.chip.masks['enable'][218,155] = True # enable an hot pixel
+        # self.chip.masks['tdac'][218,155] = 4
         #self.chip.masks['enable'][219,192] = True # enable 3 hot pixel
         #self.chip.masks['tdac'][219,192] = 4
+        self.chip.masks['enable'][1,140] = True # enable an hot pixel
+        self.chip.masks['tdac'][1,140] = 1
 
         # Disable W8R13 bad/broken columns (25, 160, 161, 224, 274, 383-414 included, 447) and pixels
         self.chip.masks['enable'][25,:] = False  # Many pixels don't fire

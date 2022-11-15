@@ -15,16 +15,23 @@ from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.analysis import analysis
 
 scan_configuration = {
-    'start_column': 0,
-    'stop_column': 511,
-    'start_row': 0,
-    'stop_row': 511,
+    'start_column': 213,
+    'stop_column': 223,
+    'start_row': 120,
+    'stop_row': 220,
 
-    'scan_time': 60,  # seconds
-    'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
+    'scan_time': 2400,  # seconds
+    #'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
     #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning_interpreted.h5",  # Optional h5 file to load the TDAC values from
     # file produced w/o BCID target THR=20 DAC and pwell/psub=-6V
     #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_125629_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
+    # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=213-223 rows=120-220
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221111_162731_local_threshold_tuning_interpreted.h5'
+    # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=180-223 rows=120-220
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221112_121058_local_threshold_tuning_interpreted.h5'
+    # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=213-223 rows=120-220
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221115_091130_local_threshold_tuning_interpreted.h5'
+
 }
 
 register_overrides = {
