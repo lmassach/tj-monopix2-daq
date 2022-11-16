@@ -16,15 +16,15 @@ from tjmonopix2.system.scan_base import ScanBase
 from tqdm import tqdm
 
 scan_configuration = {
-    'start_column': 0,  # 213
-    'stop_column': 2,  # 223
+    'start_column': 213,  # 213
+    'stop_column': 215,  # 223
     'start_row': 120,  # 120
     'stop_row': 220,  # 220
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
-    'VCAL_LOW_start': 139,
-    'VCAL_LOW_stop': 1,
+    'VCAL_LOW_start': 140-20,
+    'VCAL_LOW_stop': 140-70,
     'VCAL_LOW_step': -1,
 
     'reset_bcid': False,  # Reset BCID counter before every injection
@@ -57,15 +57,17 @@ scan_configuration = {
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221112_105327_local_threshold_tuning_interpreted.h5'
     # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=28-78 rows=120-220
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221112_112127_local_threshold_tuning_interpreted.h5'
-     # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=213-223 rows=120-220
+    # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=213-223 rows=120-220
     # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221115_091130_local_threshold_tuning_interpreted.h5'
+    # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=213-223 rows=120-220
+    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221116_120812_local_threshold_tuning_interpreted.h5'
 }
 
 register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
     'VRESET': 143,  # Default 143
-    'ICASN': 150,  # Default 0
+    'ICASN': 0,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100

@@ -39,8 +39,8 @@ register_overrides = {
     'ICASN': 150,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
-    "IDB": 53,  # Default 100
-    'ITUNE': 150,  # Default 53
+    "IDB": 62,  # Default 100
+    'ITUNE': 53,  # Default 53
 
     # # set readout cycle timing as in TB
     # 'FREEZE_START_CONF': 41,  # Default 1, TB 41
@@ -73,7 +73,7 @@ class HotPixelScan(ScanBase):
         # Injected pixel
         self.chip.masks['enable'][inj_col,inj_row] = True
         self.chip.masks['injection'][inj_col,inj_row] = True
-        self.chip.masks['tdac'][inj_col,inj_row] = 6
+        self.chip.masks['tdac'][inj_col,inj_row] = 4
 
         # self.chip.masks['enable'][222,188] = True # enable an hot pixel
         # self.chip.masks['tdac'][222,188] = 4
