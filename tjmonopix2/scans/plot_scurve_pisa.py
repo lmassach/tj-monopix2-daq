@@ -67,6 +67,7 @@ def main(input_file, overwrite=False):
         tot_hist = [np.zeros((charge_dac_bins, 128)) for _ in range(len(FRONTENDS) + 1)]
         dt_tot_hist = [np.zeros((128, 479)) for _ in range(len(FRONTENDS) + 1)]
         dt_q_hist = [np.zeros((charge_dac_bins, 479)) for _ in range(len(FRONTENDS) + 1)]
+        tot_per_pixel_hist = np.zeros((col_n, row_n, 128))
 
         # Process one chunk of data at a time
         csz = 2**24
@@ -99,6 +100,13 @@ def main(input_file, overwrite=False):
             occupancy_tmp /= n_injections
             occupancy += occupancy_tmp
             del occupancy_tmp
+
+            # Fill histogram with ToT distribution per pixel
+            tot_per_pixel_tmp, tot_per_pixel_edges = np.histogramdd(
+                (hits["col"], hits["row"], tot), bins=[col_n, row_n, 128],
+                range=[[col_start, col_stop], [row_start, row_stop], [-0.5, 127.5]])
+            tot_per_pixel_hist += tot_per_pixel_tmp
+            del tot_per_pixel_tmp
 
             for i, ((fc, lc, _), mask) in enumerate(zip(chain([(0, 511, 'All FEs')], FRONTENDS), chain([slice(-1)], fe_masks))):
                 if fc >= col_stop or lc < col_start:
@@ -151,9 +159,40 @@ def main(input_file, overwrite=False):
                     f'{", ..." if len(noisy_list) > mi else ""}'
                     f"\nTotal = {len(noisy_list)} pixels ({len(noisy_list)/row_n/col_n:.1%})"
                 ), (0.5, 0.5), ha='center', va='center')
+            print(f"Noisy pixels (n = {len(noisy_list)})")
             print("[" + ", ".join(str((a, b)) for a, b in noisy_list) + "]")
         else:
             plt.annotate("No noisy pixel found.", (0.5, 0.5), ha='center', va='center')
+        plt.gca().set_axis_off()
+        pdf.savefig(); plt.clf()
+
+        # Look for pixels with random ToT (those with hits with ToT ≥ 40)
+        n_crazy_hits = np.sum(tot_per_pixel_hist[:,:,40:], axis=2)
+        mask = n_crazy_hits > 0
+        crazy_list = np.argwhere(mask) + top_left
+        crazy_indices = np.nonzero(mask)
+        srt = np.argsort(-n_crazy_hits[crazy_indices])
+        crazy_indices = tuple(x[srt] for x in crazy_indices)
+        crazy_list = crazy_list[srt]
+        if len(crazy_list):
+            mi = min(len(crazy_list), 50)
+            tmp = "\n".join(
+                ",    ".join(f"({a}, {b}) = {float(c):.0f}" for (a, b), c in g)
+                for g in groupwise(zip(crazy_list[:mi], n_crazy_hits[tuple(x[:mi] for x in crazy_indices)]), 3))
+            plt.annotate(
+                split_long_text(
+                    "Crazy pixels search (i.e. pixels with random ToT)\n"
+                    "Pixels with ≥ 1 hit with ToT ≥ 40 (col, row)\n"
+                    f"{tmp}"
+                    f'{", ..." if len(crazy_list) > mi else ""}'
+                    f"\nTotal = {len(crazy_list)} pixels ({len(crazy_list)/row_n/col_n:.1%})"
+                ), (0.5, 0.5), ha='center', va='center')
+            print(f"Crazy pixels (n = {len(crazy_list)})")
+            print("\n".join(f"({a}, {b}) = {float(c):.0f}" for (a, b), c in zip(
+                crazy_list, n_crazy_hits[tuple(x for x in crazy_indices)])))
+            print("[" + ", ".join(str((a, b)) for a, b in crazy_list) + "]")
+        else:
+            plt.annotate("No crazy pixel found.", (0.5, 0.5), ha='center', va='center')
         plt.gca().set_axis_off()
         pdf.savefig(); plt.clf()
 
