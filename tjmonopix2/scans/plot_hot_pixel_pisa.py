@@ -185,8 +185,17 @@ def main(input_file, overwrite=False, verbose=False):
         plt.grid()
         plt.legend()
         pdf.savefig()
+        # Zoom
         plt.xlim(-1, 60)
         plt.ylim(0, (h[:60].max() + 1) * 1.2)
+        pdf.savefig()
+        # Zoom
+        plt.xlim(29, 50)
+        plt.ylim(0, (h[29:50].max() + 1) * 1.2)
+        pdf.savefig()
+        # Zoom
+        plt.xlim(10, 25)
+        plt.ylim(0, (h[10:25].max() + 1) * 1.2)
         pdf.savefig(); plt.clf()
 
         # Frames ("photos" of pixels that fire with the same timestamp, i.e. read at the same time)

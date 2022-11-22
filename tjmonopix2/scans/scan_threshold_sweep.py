@@ -10,27 +10,32 @@ import datetime
 
 
 scan_configuration = {
-    'start_column': 1,
-    'stop_column': 2,
-    'start_row': 140,
-    'stop_row': 141,
+     'start_column': 1,  # 213
+    'stop_column': 3,  # 223
+    'start_row': 140,  # 120
+    'stop_row': 145,  # 220
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
     'VCAL_LOW_start': 139,
-    'VCAL_LOW_stop': 1,
-    'VCAL_LOW_step': -1
+    'VCAL_LOW_stop': 140-60,
+    'VCAL_LOW_step': -1,
+
+   'reset_bcid': False,  # Reset BCID counter before every injection
+    # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=180-223 rows=150-500
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-17/chip_0/20221117_184249_local_threshold_tuning_interpreted.h5'
 }
 
 default_register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
-    'VRESET': 143,  # Default 143
-    'ICASN': 150,  # Default 0
+    'VRESET': 110,  # Default 143, 110 for lower THR
+    'ICASN': 200,  # Default TB 0 , 150 for -3V , 200 for -6V
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
-    "IDB": 55,  # Default 100
-    'ITUNE': 150,  # Default 53
+    "IDB": 100,  # Default 100
+    'ITUNE': 150,  # Default TB 53, 150 for lower THR tuning
+    'VCLIP': 255,  # Default 255
 
     # # set readout cycle timing as in TB
     # 'FREEZE_START_CONF': 41,  # Default 1, TB 41
@@ -49,7 +54,8 @@ default_register_overrides = {
 }
 
 sweeps = {  # REGISTER: (START, STOP, STEP)
-    'IDB': (53, 56, 2),
+    #'VCLIP': (120, 80, -10),
+    'IDB': (90, 50, -10),
     #'VRESET': (70, 255, 20),
     #'IBIAS': (20, 60, 5),
     #'VCASP': (3, 255, 10),

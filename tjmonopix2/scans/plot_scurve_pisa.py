@@ -182,7 +182,7 @@ def main(input_file, overwrite=False):
         # S-Curve for specific pixels
 #        for col, row in [(219, 161), (219, 160), (220, 160), (221, 160), (220, 159), (221, 159) ,(222,188) , (219,192), (218,155), (216,117), (222,180), (222,170),(221,136),(221,205),(221,174)]:
         # for col, row in [(221, 160),(222,188) , (222,180), (222,170),(221,205),(221,174), (218,155), (218,150), (219,192), (219,180) , (213,213)]:
-        for col, row in [(180, 127), (190, 120), (181, 164), (210, 165),(213, 213), (217, 150), (214, 149), (218, 155), (213, 121), (213, 122), (214, 121), (217, 122), (218, 123), (219, 120), (222, 120), (219, 117), (0, 127), (1, 140), (1, 152), (1, 173), (1, 210)]:
+        for col, row in [(180, 127), (190, 120), (181, 164), (210, 165),(213, 213), (217, 150), (214, 149), (218, 155), (213, 121), (213, 122), (214, 121), (217, 122), (218, 123), (219, 120), (222, 120), (219, 117), (0, 127), (1, 140), (2, 142), (1, 152), (1, 173), (1, 210)]:
             if not (col_start <= col < col_stop and row_start <= row < row_stop):
                 continue
             plt.plot(charge_dac_values, occupancy[col-col_start,row-row_start,:], '.-', label=str((col, row)))
@@ -191,6 +191,8 @@ def main(input_file, overwrite=False):
         plt.xlabel("Injected charge [DAC]")
         plt.ylabel("Occupancy")
         plt.ylim(0, 1.5)
+        plt.xlim(-5, 145)
+        plt.grid()
         plt.legend(ncol=2)
         set_integer_ticks(plt.gca().xaxis)
         pdf.savefig(); plt.clf()
@@ -206,7 +208,8 @@ def main(input_file, overwrite=False):
             plt.suptitle(f"ToT curve ({name})")
             plt.xlabel("Injected charge [DAC]")
             plt.ylabel("ToT [25 ns]")
-            plt.ylim(0,50)
+            plt.ylim(0,26)
+            plt.grid(axis='both',)
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
             cb = integer_ticks_colorbar()
             cb.set_label("Hits / bin")

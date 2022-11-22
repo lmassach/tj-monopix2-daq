@@ -149,7 +149,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         #plt.xlim(10, 120)
         #plt.xlim(10, 128)
         #plt.ylim(0, max(h[10:].max() for h in tot1d) * 1.2)
-        plt.grid(axis='y')
+        plt.grid(axis='both')
         if log_tot:
             # plt.ylim(0.9, max(h[10:120].max() for h in tot1d) * 1.2)
             plt.ylim(0.9, max(h.max() for h in tot1d) * 1.2)
@@ -169,7 +169,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         plt.title("ToT (isolated hits only)")
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")
-        plt.grid(axis='y')
+        plt.grid(axis='both')
         if log_tot:
             plt.yscale('log')
             set_integer_ticks(plt.gca().xaxis)

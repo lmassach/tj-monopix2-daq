@@ -71,7 +71,7 @@ class BDAQ53(Dut):
         #     self.rx_lanes[recv] = t_rx_lanes
 
         # Configure cmd encoder
-        self.set_cmd_clk(frequency=160.0)
+        self.set_cmd_clk(frequency=160.0, force=True)
         self['cmd'].reset()
         time.sleep(0.1)
 

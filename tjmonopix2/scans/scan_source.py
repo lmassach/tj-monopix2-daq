@@ -15,13 +15,13 @@ from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.analysis import analysis
 
 scan_configuration = {
-    'start_column': 213,
+    'start_column': 180,
     'stop_column': 223,
-    'start_row': 120,
-    'stop_row': 220,
+    'start_row': 150,
+    'stop_row': 500,
 
     'scan_time': 60,  # seconds
-    'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
+    #'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
     #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning_interpreted.h5",  # Optional h5 file to load the TDAC values from
     # file produced w/o BCID target THR=20 DAC and pwell/psub=-6V
     #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-02/chip_0/20221102_125629_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
@@ -31,18 +31,28 @@ scan_configuration = {
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221112_121058_local_threshold_tuning_interpreted.h5'
     # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=213-223 rows=120-220
     # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-15/chip_0/20221115_091130_local_threshold_tuning_interpreted.h5'
-
+   # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=180-223 rows=150-500
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-17/chip_0/20221117_184249_local_threshold_tuning_interpreted.h5'
 }
 
 register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
-    'VRESET': 143,  # Default 143
-    'ICASN': 0,  # Default 0
+    'VRESET': 110,  # Default 143
+    'ICASN': 200,  # Default 0
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
-    'ITUNE': 53,  # Default 53
+    'ITUNE':  150,  # Default 53
+    'VCLIP': 255,  # Default 255
+
+    # set readout cycle timing as in TB/or as default in Pisa
+    'FREEZE_START_CONF': 10,  # Default 1, TB 41
+    'READ_START_CONF': 13,  # Default 3, TB 81
+    'READ_STOP_CONF': 15,  # Default 5, TB 85
+    'LOAD_CONF': 30,  # Default 7, TB 119
+    'FREEZE_STOP_CONF': 31,  # Default 8, TB 120
+    'STOP_CONF': 31  # Default 8, TB 120
 }
 
 registers = ['IBIAS', 'ICASN', 'IDB', 'ITUNE', 'ITHR', 'ICOMP', 'IDEL', 'VRESET', 'VCASP', 'VH', 'VL', 'VCLIP', 'VCASC', 'IRAM']

@@ -20,16 +20,16 @@ from tjmonopix2.scans.shift_and_inject import shift_and_inject, get_scan_loop_ma
 from tjmonopix2.analysis import online as oa
 
 scan_configuration = {
-    'start_column': 213,  # 213
+    'start_column': 180,  # 213
     'stop_column': 223,  # 223
-    'start_row': 120,  # 120
-    'stop_row': 220,  # 220
+    'start_row': 150,  # 120
+    'stop_row': 500,  # 220
 
     'n_injections': 100,
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 30+22,
+    'VCAL_HIGH': 30+20,
 
     'bcid_reset': False,  # BCID reset before injection
 }
@@ -58,13 +58,13 @@ register_overrides = {
     # Enable hitor
     'SEL_PULSE_EXT_CONF': 0,
 
-    # set readout cycle timing as in TB/or as default in Pisa
-    'FREEZE_START_CONF': 1,  # Default 1, TB 41
-    'READ_START_CONF': 3,  # Default 3, TB 81
-    'READ_STOP_CONF': 5,  # Default 5, TB 85
-    'LOAD_CONF': 7,  # Default 7, TB 119
-    'FREEZE_STOP_CONF': 8,  # Default 8, TB 120
-    'STOP_CONF': 8  # Default 8, TB 120
+    # set readout cycle timing as in TB/or as default in Pisa/or as in hot pixel study
+    'FREEZE_START_CONF': 10,  # Default 1, TB 41
+    'READ_START_CONF': 13,  # Default 3, TB 81
+    'READ_STOP_CONF': 15,  # Default 5, TB 85
+    'LOAD_CONF': 30,  # Default 7, TB 119
+    'FREEZE_STOP_CONF': 31,  # Default 8, TB 120
+    'STOP_CONF': 31  # Default 8, TB 120
 }
 
 

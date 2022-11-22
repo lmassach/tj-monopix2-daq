@@ -16,14 +16,14 @@ from tjmonopix2.system.scan_base import ScanBase
 from tqdm import tqdm
 
 scan_configuration = {
-    'start_column': 213,  # 213
-    'stop_column': 215,  # 223
-    'start_row': 120,  # 120
-    'stop_row': 220,  # 220
+    'start_column': 1,  # 213
+    'stop_column': 2,  # 223
+    'start_row': 140,  # 120
+    'stop_row': 141,  # 220
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
-    'VCAL_LOW_start': 140-20,
+    'VCAL_LOW_start': 139,
     'VCAL_LOW_stop': 140-70,
     'VCAL_LOW_step': -1,
 
@@ -61,17 +61,23 @@ scan_configuration = {
     # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221115_091130_local_threshold_tuning_interpreted.h5'
     # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=213-223 rows=120-220
     # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221116_120812_local_threshold_tuning_interpreted.h5'
+    # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=213-223 rows=120-220
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221117_165326_local_threshold_tuning_interpreted.h5'
+    # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=180-223 rows=150-500
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-17/chip_0/20221117_184249_local_threshold_tuning_interpreted.h5'
+
 }
 
 register_overrides = {
     'ITHR': 64,  # Default 64
     'IBIAS': 50,  # Default 50
-    'VRESET': 143,  # Default 143
-    'ICASN': 0,  # Default 0
+    'VRESET': 110,  # Default 143, 110 for lower THR
+    'ICASN': 200,  # Default TB 0 , 150 for -3V , 200 for -6V
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
-    "IDB": 100,  # Default 100
-    'ITUNE': 53,  # Default 53
+    "IDB": 45,  # Default 100
+    'ITUNE': 150,  # Default TB 53, 150 for lower THR tuning
+    'VCLIP': 255,  # Default 255
     # Enable VL and VH measurement and override
     # 'MON_EN_VH': 0,
     # 'MON_EN_VL': 0,
@@ -127,6 +133,8 @@ class ThresholdScan(ScanBase):
                     np.where(
                         file_tdac != 0, file_tdac,
                         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row])
+
+        # self.chip.masks['tdac'][1,140] = 3
 
         # Disable W8R13 bad/broken columns (25, 160, 161, 224, 274, 383-414 included, 447) and pixels
         self.chip.masks['enable'][25,:] = False  # Many pixels don't fire
