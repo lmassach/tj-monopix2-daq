@@ -186,7 +186,7 @@ def main(input_file, overwrite=False, verbose=False):
         plt.legend()
         pdf.savefig()
         # Zoom
-        plt.xlim(-1, 60)
+        plt.xlim(-1, 75)
         plt.ylim(0, (h[:60].max() + 1) * 1.2)
         pdf.savefig()
         # Zoom

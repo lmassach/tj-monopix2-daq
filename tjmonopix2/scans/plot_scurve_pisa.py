@@ -161,13 +161,16 @@ def main(input_file, overwrite=False):
                 ), (0.5, 0.5), ha='center', va='center')
             print(f"Noisy pixels (n = {len(noisy_list)})")
             print("[" + ", ".join(str((a, b)) for a, b in noisy_list) + "]")
+            output_file_txt = os.path.splitext(input_file)[0]
+            with open(output_file_txt + "_noisy_pixels_occu.txt", "w") as f1:
+                print("[" + ", ".join(f'"{int(a)}, {int(b)}"' for a, b in noisy_list) + "]", file=f1)
         else:
             plt.annotate("No noisy pixel found.", (0.5, 0.5), ha='center', va='center')
         plt.gca().set_axis_off()
         pdf.savefig(); plt.clf()
 
-        # Look for pixels with random ToT (those with hits with ToT ≥ 40)
-        n_crazy_hits = np.sum(tot_per_pixel_hist[:,:,40:], axis=2)
+        # Look for pixels with random ToT (those with hits with ToT ≥ 100)
+        n_crazy_hits = np.sum(tot_per_pixel_hist[:,:,100:], axis=2)
         mask = n_crazy_hits > 0
         crazy_list = np.argwhere(mask) + top_left
         crazy_indices = np.nonzero(mask)
@@ -182,7 +185,7 @@ def main(input_file, overwrite=False):
             plt.annotate(
                 split_long_text(
                     "Crazy pixels search (i.e. pixels with random ToT)\n"
-                    "Pixels with ≥ 1 hit with ToT ≥ 40 (col, row)\n"
+                    "Pixels with ≥ 1 hit with ToT ≥ 100 (col, row)\n"
                     f"{tmp}"
                     f'{", ..." if len(crazy_list) > mi else ""}'
                     f"\nTotal = {len(crazy_list)} pixels ({len(crazy_list)/row_n/col_n:.1%})"
@@ -221,7 +224,15 @@ def main(input_file, overwrite=False):
         # S-Curve for specific pixels
 #        for col, row in [(219, 161), (219, 160), (220, 160), (221, 160), (220, 159), (221, 159) ,(222,188) , (219,192), (218,155), (216,117), (222,180), (222,170),(221,136),(221,205),(221,174)]:
         # for col, row in [(221, 160),(222,188) , (222,180), (222,170),(221,205),(221,174), (218,155), (218,150), (219,192), (219,180) , (213,213)]:
-        for col, row in [(180, 127), (190, 120), (181, 164), (210, 165),(213, 213), (217, 150), (214, 149), (218, 155), (213, 121), (213, 122), (214, 121), (217, 122), (218, 123), (219, 120), (222, 120), (219, 117), (0, 127), (1, 140), (2, 142), (1, 152), (1, 173), (1, 210)]:
+        for col, row in [(140,132),(132,133),(132,200),(192,4), (192,20),(192,100),(192,200),(193,4), (193,100) ] \
+        +        [(193,200),(10,255), (8,447), (36,123), (41,462) , (180, 127), (190, 120), (181, 164), (210, 165),(213, 213)] \
+        +        [(217, 150), (214, 151), (213, 151), (218, 155), (213, 121), (213, 122), (214, 121), (217, 122), (218, 123)] \
+        +        [(219, 120), (222, 120), (219, 117)] \
+        +        [(0, 50), (0, 100), (0,127), (0,130), (0,131), (0,132), (0,133), (0,140)] \
+        +          [(240, 390), (240, 181)]\
+        :
+                #+        [(1, 50), (1, 100), (1,127), (1,130), (1,131), (1,132), (1,133)] \
+               #+        [(1, 140), (2, 142), (1, 152), (1, 173), (1, 210)] \
             if not (col_start <= col < col_stop and row_start <= row < row_stop):
                 continue
             plt.plot(charge_dac_values, occupancy[col-col_start,row-row_start,:], '.-', label=str((col, row)))
@@ -229,8 +240,8 @@ def main(input_file, overwrite=False):
         plt.suptitle(f"S-Curve of specific pixels")
         plt.xlabel("Injected charge [DAC]")
         plt.ylabel("Occupancy")
-        plt.ylim(0, 1.5)
-        plt.xlim(-5, 145)
+        plt.ylim(0, 1.1)
+        plt.xlim(-5, 60)
         plt.grid()
         plt.legend(ncol=2)
         set_integer_ticks(plt.gca().xaxis)
@@ -247,7 +258,7 @@ def main(input_file, overwrite=False):
             plt.suptitle(f"ToT curve ({name})")
             plt.xlabel("Injected charge [DAC]")
             plt.ylabel("ToT [25 ns]")
-            plt.ylim(0,26)
+            plt.ylim(0,128)
             plt.grid(axis='both',)
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
             cb = integer_ticks_colorbar()
@@ -261,8 +272,11 @@ def main(input_file, overwrite=False):
         # Assuming the shape is an erf, this estimator is consistent
         w = np.maximum(0, 0.5 - np.abs(occupancy - 0.5))
         threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
-        print("Pixels with THR  < 1")
-        for col, row in zip(*np.nonzero(threshold_DAC < 1)):
+        #print("Pixels with THR  < 1")
+        #for col, row in zip(*np.nonzero(threshold_DAC < 1)):
+        #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+        print("Pixels with 1 < THR < 25")
+        for col, row in zip(*np.nonzero((1 < threshold_DAC) & (threshold_DAC < 25))):
             print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
         print("Pixels with THR > 50")
         for col, row in zip(*np.nonzero(threshold_DAC > 50)):
@@ -292,11 +306,12 @@ def main(input_file, overwrite=False):
         set_integer_ticks(plt.gca().yaxis)
         plt.legend()
         plt.grid(axis='y')
+        plt.yscale('log')
         pdf.savefig(); plt.clf()
 
         # Threshold map
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=5, vmax=30,
+        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=25, vmax=40,
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Threshold map")

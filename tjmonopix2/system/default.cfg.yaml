@@ -1,3 +1,7 @@
 # DAC settings (not optimized, ~2500 e threshold)
 registers:
   IBIAS: 50
+
+# Chip W8R13 pixels to be disable
+
+disable_pixel: ["240, 390", "240, 181", "241, 412", "240, 305"]

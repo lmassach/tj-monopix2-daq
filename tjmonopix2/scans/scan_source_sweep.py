@@ -11,26 +11,30 @@ import tqdm
 
 
 scan_configuration = {
-    'start_column': 180,
-    'stop_column': 223,
-    'start_row': 150,
-    'stop_row': 500,
+    'start_column': 0,
+    'stop_column': 447,
+    'start_row': 0,
+    'stop_row': 512,
 
-    'scan_time': 30,  # seconds
+    'scan_time': 60,  # seconds
     # File produced w/o BCID reset target=20 DAC psub/pwell=-6V cols=180-223 rows=150-500
-    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-17/chip_0/20221117_184249_local_threshold_tuning_interpreted.h5'
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-11-17/chip_0/20221117_184249_local_threshold_tuning_interpreted.h5'
+    # chipW15R12 File produced w BCID reset target=31 DAC psub ground pwell=-3V cols=0-223 rows=0-511
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-12-14/chip_0/20221214_114000_local_threshold_tuning.h5'
+    #chipW8r13 File produced w BCID reset target=25 DAC psub/pwell=-6V cols=0-447 rows=0-512
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230108_084232_local_threshold_tuning_interpreted.h5'
 }
 
 default_register_overrides = {
-    'ITHR': 64,  # Default 64
+  'ITHR':30,  # Default 64
     'IBIAS': 50,  # Default 50
-    'VRESET': 110,  # Default 143
-    'ICASN': 200,  # Default 0
+    'VRESET': 110,  # Default 143, 110 for lower THR
+    'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
-    'ITUNE':  150,  # Default 53
-    'VCLIP': 160,  # Default 255
+    'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
+    'VCLIP': 255,  # Default 255
 
     # set readout cycle timing as in TB/or as default in Pisa
     'FREEZE_START_CONF': 10,  # Default 1, TB 41
@@ -42,15 +46,15 @@ default_register_overrides = {
 }
 
 sweeps = {  # REGISTER: (START, STOP, STEP)
-    'VCLIP': (155, 100, -5),
-    #'ITHR': (25, 75, 5),
+    #'VCLIP': (155, 100, -5),
+    #'ITHR': (60, 10, -10),
     #'VRESET': (70, 255, 20),
     #'IBIAS': (20, 60, 5),
     #'VCASP': (100, 140, 5),
     #'ICASN': (0, 16, 1)
     #'ITHR': (20, 41, 20),
-    #'ICASN': (5, 16, 5),
-    #'IDB': (100, 250, 10)
+    'ICASN': (0, 25, 5),
+    #'IDB': (100, 50, -10)
 }
 
 if __name__ == "__main__":

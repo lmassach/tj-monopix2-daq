@@ -146,7 +146,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         plt.title("ToT")
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")
-        #plt.xlim(10, 120)
+        #plt.xlim(0, 30)
         #plt.xlim(10, 128)
         #plt.ylim(0, max(h[10:].max() for h in tot1d) * 1.2)
         plt.grid(axis='both')
@@ -156,7 +156,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
             plt.yscale('log')
             set_integer_ticks(plt.gca().xaxis)
         else:
-            plt.ylim(0, max(h[10:120].max() for h in tot1d) * 1.2)
+            #plt.ylim(0, max(h[10:120].max() for h in tot1d) * 1.2)
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
         plt.legend()
         pdf.savefig(); plt.clf()
@@ -217,7 +217,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         with np.errstate(all='ignore'):
             totavg = tot2d / counts2d
         plt.pcolormesh(tot2d_edges, tot2d_edges, totavg.transpose(),
-                       vmin=-0.5, vmax=25.5, rasterized=True)  # Necessary for quick save and view in PDF
+                       vmin=-0.5, vmax=40.5, rasterized=True)  # Necessary for quick save and view in PDF
         plt.title("Average ToT map")
         plt.xlabel("Col")
         plt.ylabel("Row")
@@ -274,7 +274,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
                 srt = np.argsort(-counts2d[noisy_indices])
                 noisy_indices = tuple(x[srt] for x in noisy_indices)
                 noisy_list = noisy_list[srt]
-                mi = min(len(noisy_list), 10)
+                mi = min(len(noisy_list), 20)
                 tmp = "\n".join(
                     ",    ".join(f"({a}, {b}) = {float(c)/scan_time:.3g}" for (a, b), c in g)
                     for g in groupwise(zip(noisy_list[:mi], counts2d[tuple(x[:mi] for x in noisy_indices)]), 1))
@@ -285,6 +285,9 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
                         f'{", ..." if len(noisy_list) > mi else ""}'
                         f"\nTotal = {len(noisy_list)} pixels"
                     ), (0.5, 0.5), ha='center', va='center')
+                output_file_txt = os.path.splitext(input_files[0])[0]
+                with open(output_file_txt + "_noisy_pixels_rate.txt", "w") as f1:
+                    print("[" + ", ".join(f'"{int(a)}, {int(b)}"' for a, b in noisy_list) + "]", file=f1)
             else:
                 plt.annotate("No noisy pixel found.", (0.5, 0.5), ha='center', va='center')
             plt.gca().set_axis_off()

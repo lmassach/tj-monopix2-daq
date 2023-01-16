@@ -17,22 +17,41 @@ scan_configuration = {
     # 'stop_column': 464,
     'start_column': 511,
     'stop_column': 512,
-    'start_row': 0,
+    'start_row': 511,
     'stop_row': 512,
 }
 
 register_overrides = {
-    'n_injections' : 20000,
+    'n_injections' : 100,
     "CMOS_TX_EN_CONF": 1,
-    'VL': 1,
+    'VL': 2,
     'VH': 140,
-    'ITHR': 64,
-    'IBIAS': 100,
-    'VRESET': 143,
-    'ICASN': 0,
-    'VCASP': 93,
-    'VCASC': 228,  # Default
-    'IDB': 100
+    #'ITHR': 64,
+    #'IBIAS': 50,
+    #'VRESET': 143,
+    #'ICASN': 0,
+
+    #'VCASP': 93,
+    #'VCASC': 228,  # Default
+    #'IDB': 100,
+
+    'ITHR': 64,  # Default 64
+    'IBIAS': 50,  # Default 50
+    'VRESET': 110,  # Default 143, 110 for lower THR
+    'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+    'VCASP': 93,  # Default 93
+    "VCASC": 228,  # Default 228
+    "IDB": 100,  # Default 100
+    'ITUNE': 53,  # Default TB 53, 150 for lower THR tuning
+    'VCLIP': 255,  # Default 255
+
+    # set readout cycle timing as in TB/or as default in Pisa
+    'FREEZE_START_CONF': 10,  # Default 1, TB 41
+    'READ_START_CONF': 13,  # Default 3, TB 81
+    'READ_STOP_CONF': 15,  # Default 5, TB 85
+    'LOAD_CONF': 30,  # Default 7, TB 119
+    'FREEZE_STOP_CONF': 31,  # Default 8, TB 120
+    'STOP_CONF': 31  # Default 8, TB 120}
 }
 
 registers = ['IBIAS', 'ICASN', 'IDB', 'ITUNE', 'ITHR', 'ICOMP', 'IDEL', 'VRESET', 'VCASP', 'VH', 'VL', 'VCLIP', 'VCASC', 'IRAM']

@@ -12,6 +12,7 @@
 
 import time
 
+import tables as tb
 from tqdm import tqdm
 import numpy as np
 
@@ -20,29 +21,51 @@ from tjmonopix2.scans.shift_and_inject import shift_and_inject, get_scan_loop_ma
 from tjmonopix2.analysis import online as oa
 
 scan_configuration = {
-    'start_column': 180,  # 213
-    'stop_column': 223,  # 223
+    'start_column': 0,  # 213
+    'stop_column': 447,  # 223
     'start_row': 150,  # 120
-    'stop_row': 500,  # 220
+    'stop_row': 512,  # 220
 
     'n_injections': 100,
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 30+20,
+    'VCAL_HIGH': 30+22,
 
-    'bcid_reset': False,  # BCID reset before injection
+    'bcid_reset': True,  # BCID reset before injection
+    #'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
+    # File produced w BCID reset target=21 DAC psub/pwell=-3V cols=0-223 rows=0-511 ITUNE=175 redone disabling bad col 192-223
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20221213_152510_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=32 DAC psub pwell=-6V cols=0-10 rows=150-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230112_152836_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=30 DAC psub pwell=-6V cols=0-10 rows=150-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230115_163629_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=50 DAC psub pwell=-6V cols=224-447 rows=150-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230115_175350_local_threshold_tuning_interpreted.h5'
+   # chipW8R13 File produced w BCID reset target=32 VCASC=228 DAC psub pwell=-6V cols=0-447 rows=150-512
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-01-15/chip_0/20230115_183553_local_threshold_tuning_interpreted.h5'
 }
 
 register_overrides = {
-    'ITHR': 64,  # Default 64
-    'IBIAS': 50,  # Default 50
-    'VRESET': 110,  # Default 143
-    'ICASN': 200,  # Default 0
+ #   'ITHR':30,  # Default 64
+ #   'IBIAS': 50,  # Default 50
+ #   'VRESET': 110,  # Default 143, 110 for lower THR
+ #   'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+ #   'VCASP': 93,  # Default 93
+ #   "VCASC": 228,  # Default 228
+ #   "IDB": 100,  # Default 100
+ #   'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
+ #   'VCLIP': 255,  # Default 255
+    # Lars proposed tuning with target ~ 23 but in this chip seems ITHR=30
+    'ITHR':64,  # Default 64
+    'IBIAS': 100,  # Default 50
+    'VRESET': 128,  # Default 143, 110 for lower THR
+    'ICASN': 54,  # Default TB 0 , 150 for -3V , 200 for -6V
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
     "IDB": 100,  # Default 100
-    'ITUNE': 150,  # Default 53
+    'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
+    'VCLIP': 255,  # Default 255
     # Enable VL and VH measurement and override
     # 'MON_EN_VH': 0,
     # 'MON_EN_VL': 0,
@@ -71,7 +94,7 @@ register_overrides = {
 class TDACTuning(ScanBase):
     scan_id = 'local_threshold_tuning'
 
-    def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, VCAL_LOW=30, VCAL_HIGH=60, **_):
+    def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, VCAL_LOW=30, VCAL_HIGH=60, load_tdac_from=None, **_):
         '''
         Parameters
         ----------
@@ -90,12 +113,25 @@ class TDACTuning(ScanBase):
             Injection DAC high value.
         '''
 
+
+
         self.data.start_column, self.data.stop_column, self.data.start_row, self.data.stop_row = start_column, stop_column, start_row, stop_row
         self.chip.masks['enable'][:, :] = False
         self.chip.masks['injection'][:, :] = False
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100
+
+        # Load TDAC from h5 file (optional)
+        if load_tdac_from:
+            with tb.open_file(load_tdac_from) as f:
+                file_tdac = f.root.configuration_out.chip.masks.tdac[:]
+                file_tdac = file_tdac[start_column:stop_column, start_row:stop_row]
+                # Do not replace TDAC values with zeros from the file, use the default for those pixels
+                self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = \
+                    np.where(
+                        file_tdac != 0, file_tdac,
+                        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row])
 
         # Disable W8R13 bad/broken columns (25, 160, 161, 224, 274, 383-414 included, 447) and pixels
         self.chip.masks['enable'][25,:] = False  # Many pixels don't fire
@@ -110,6 +146,7 @@ class TDACTuning(ScanBase):
         self.chip.masks['enable'][219,161] = False # disable hottest pixel on chip
         self.chip.masks['enable'][214,88] = False
         self.chip.masks['enable'][215,101] = False
+        self.chip.masks['enable'][191:223,:] = False  # cols 191-223 are broken since Nov/dec very low THR
 
         # # Noisy/hot W8R13 pixels
         # for col, row in [(219, 161), (222, 188), (219, 192), (219, 129), (221, 125), (219, 190), (220, 205), (220, 144), (220, 168), (219, 179), (221, 136), (222, 186), (219, 163), (221, 205), (226, 135), (222, 174), (221, 199), (222, 185), (221, 203), (225, 181), (220, 123), (222, 142), (223, 143), (220, 154), (221, 149), (221, 179), (222, 120), (219, 125)] \
@@ -120,10 +157,22 @@ class TDACTuning(ScanBase):
         #         :
         #     self.chip.masks['enable'][col,row] = False
 
+        # # Noisy/hot W8R13 pixels from Jan 7-8 source scan with Fe55
+        for col, row in [(7,126), (16,75), (10,362), (30, 34), (12, 453), (6, 348), (6, 348), (20, 404), (11, 379), (30, 271)] \
+               + [(30, 164), (24, 411),  (24, 65),  (10, 65),  (18, 341), (10, 290), (10, 176), (12, 329), (28, 438), (26, 439), (30, 155)] \
+               + [(191, 5),(26, 437),(9, 381),(20, 239),(26, 429),(28, 280),(22, 273),(18, 260),(18, 323),(16, 464),(30, 227)] \
+               + [(27, 189),(18, 292),(28, 237), (18, 231), (8, 511), (28, 409), (20, 314), (17, 294), (12, 151), (18, 332), (7, 146), (26, 479)]\
+               + [(30, 285) , (4, 205) , (2, 145) , (28, 246) , (28, 89) , (6, 370) , (10, 441), (8,269), (20,208),(18,295), (8,296), (26,199)  ] \
+               + [(240, 181), (241, 412), (240, 390), (240, 305)] \
+               + [(358, 412), (303, 37), (229, 282)] \
+                :
+             self.chip.masks['enable'][col,row] = False
+
         # W8R13 pixels that fire even when disabled
         # For these ones, we disable the readout of the whole double-column
         reg_values = [0xffff] * 16
         for col in [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335]:
+        #for col in [511]:
             dcol = col // 2
             reg_values[dcol//16] &= ~(1 << (dcol % 16))
         for i, v in enumerate(reg_values):
@@ -209,7 +258,8 @@ class TDACTuning(ScanBase):
             self.data.tdac_map[smaller_occ_and_not_stuck_sel] -= step  # Decrease threshold
 
             # Make sure no invalid TDACs are used
-            self.data.tdac_map[:, :] = np.clip(self.data.tdac_map[:, :], 1, 6)
+            #self.data.tdac_map[:, :] = np.clip(self.data.tdac_map[:, :], 1, 6)
+            self.data.tdac_map[:, :] = np.clip(self.data.tdac_map[:, :], 1, 7)
 
         # Finally use TDAC value which yielded the closest to target occupancy
         self.data.tdac_map[:, :] = best_results_map[:, :, 0]
