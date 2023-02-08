@@ -10,6 +10,8 @@ import matplotlib.cm
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import numpy as np
+from scipy.optimize import curve_fit
+from scipy.special import erf
 import tables as tb
 from tqdm import tqdm
 from uncertainties import ufloat
@@ -23,6 +25,10 @@ VIRIDIS_WHITE_UNDER.set_under('w')
 def average(a, axis=None, weights=1, invalid=np.NaN):
     """Like np.average, but returns `invalid` instead of crashing if the sum of weights is zero."""
     return np.nan_to_num(np.sum(a * weights, axis=axis).astype(float) / np.sum(weights, axis=axis).astype(float), nan=invalid)
+
+
+def s_curve(x, mu, sigma):
+    return 0.5 + 0.5 * erf((x - mu) / np.sqrt(2) / sigma)
 
 
 def main(input_file, overwrite=False):
@@ -124,6 +130,8 @@ def main(input_file, overwrite=False):
                 dt_q_hist[i] += np.histogram2d(
                     charge_dac[mask][1:], np.diff(hits["timestamp"][mask]) / 40.,
                     bins=[charge_dac_bins, 479], range=[charge_dac_range, [25e-3*16, 12*16]])[0]
+
+            del charge_dac
 
     # Do the actual plotting
     with PdfPages(output_file) as pdf:
@@ -265,13 +273,27 @@ def main(input_file, overwrite=False):
             cb.set_label("Hits / bin")
             pdf.savefig(); plt.clf()
 
-        # Compute the threshold for each pixel as the weighted average
-        # of the injected charge, where the weights are given by the
-        # occupancy such that occu = 0.5 has weight 1, occu = 0,1 have
-        # weight 0, and anything in between is linearly interpolated
-        # Assuming the shape is an erf, this estimator is consistent
-        w = np.maximum(0, 0.5 - np.abs(occupancy - 0.5))
-        threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
+        # Compute the threshold and noise for each pixels by fitting
+        # each s-curve with an error function
+        threshold_DAC = np.zeros((col_n, row_n))
+        noise_DAC = np.zeros((col_n, row_n))
+        charge_dac_np = np.array(charge_dac_values)
+        for c in tqdm(range(col_n), unit='col', desc='fit', delay=2):
+            for r in range(row_n):
+                o = np.clip(occupancy[c,r], 0, 1)
+                if not (np.any(o == 0) and np.any(o == 1)):
+                    continue
+                thr = charge_dac_np[np.argmin(np.abs(o - 0.5))]
+                try:
+                    popt, pcov = curve_fit(s_curve, charge_dac_np, o, p0=(thr, 1))
+                except RuntimeError:
+                    popt = np.full(2, np.nan)
+                    pcov = np.full((2, 2), np.nan)
+                if not np.all(np.isfinite(popt)) or not np.all(np.isfinite(pcov)):
+                    print("Fit failed:", c + col_start, r + row_start, o)
+                    continue
+                threshold_DAC[c,r], noise_DAC[c,r] = popt
+
         #print("Pixels with THR  < 1")
         #for col, row in zip(*np.nonzero(threshold_DAC < 1)):
         #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
@@ -322,11 +344,6 @@ def main(input_file, overwrite=False):
         cb.set_label("Threshold [DAC]")
         frontend_names_on_top()
         pdf.savefig(); plt.clf()
-
-        # Compute the noise (the width of the up-slope of the s-curve)
-        # as a variance with the weights above
-        noise_DAC = np.sqrt(average((occupancy_charges - np.expand_dims(threshold_DAC, -1))**2, axis=2, weights=w, invalid=0))
-        del w
 
         # Noise hist
         m = int(np.ceil(noise_DAC.max(initial=0, where=np.isfinite(noise_DAC)))) + 1
