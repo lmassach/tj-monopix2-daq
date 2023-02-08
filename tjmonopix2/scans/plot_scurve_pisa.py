@@ -309,8 +309,8 @@ def main(input_file, overwrite=False):
             lc = min(col_n - 1, lc - col_start)
             th = threshold_DAC[fc:lc+1,:]
             th_mean = ufloat(np.mean(th[th>0]), np.std(th[th>0], ddof=1))
-            plt.hist(th.reshape(-1) * 10, bins=m2-m1, range=[m1*10, m2*10],
-                     label=f"{name} ${th_mean:L}$", histtype='step', color=f"C{i}")
+            plt.hist(th.reshape(-1) * 10, bins=100, range=[m1*10, m2*10],
+                     label=f"{name} ${th_mean*10:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle("Threshold distribution")
         plt.xlabel("Threshold [$e^-$]")
@@ -324,7 +324,7 @@ def main(input_file, overwrite=False):
 
         # Threshold map
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=25, vmax=40,
+        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=18, vmax=27,
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Threshold map")
@@ -337,7 +337,8 @@ def main(input_file, overwrite=False):
         pdf.savefig(); plt.clf()
 
         # Noise hist
-        m = int(np.ceil(noise_DAC.max(initial=0, where=np.isfinite(noise_DAC)))) + 1
+        # m = int(np.ceil(noise_DAC.max(initial=0, where=np.isfinite(noise_DAC)))) + 1
+        m = 2
         for i, (fc, lc, name) in enumerate(FRONTENDS):
             if fc >= col_stop or lc < col_start:
                 continue
@@ -345,13 +346,13 @@ def main(input_file, overwrite=False):
             lc = min(col_n - 1, lc - col_start)
             ns = noise_DAC[fc:lc+1,:]
             noise_mean = ufloat(np.mean(ns[ns>0]), np.std(ns[ns>0], ddof=1))
-            plt.hist(ns.reshape(-1) * 10, bins=min(20*m, 100), range=[0, m*10],
-                     label=f"{name} ${noise_mean:L}$", histtype='step', color=f"C{i}")
+            plt.hist(ns.reshape(-1) * 10, bins=100, range=[0, m*10],
+                     label=f"{name} ${noise_mean*10:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle(f"Noise (width of s-curve slope) distribution")
         plt.xlabel("Noise (ENC) [$e^-$]")
         plt.ylabel("Pixels / bin")
-        plt.xlim(2, 10)
+        # plt.xlim(2, 10)
         set_integer_ticks(plt.gca().yaxis)
         plt.grid(axis='y')
         plt.legend()
@@ -359,7 +360,7 @@ def main(input_file, overwrite=False):
 
         # Noise map
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], noise_DAC.transpose(),
+        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], noise_DAC.transpose(), vmin=0.3, vmax=1,
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Noise (width of s-curve slope) map")
