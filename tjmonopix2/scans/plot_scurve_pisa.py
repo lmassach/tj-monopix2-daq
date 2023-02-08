@@ -300,8 +300,9 @@ def main(input_file, overwrite=False):
         #     print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
 
         # Threshold hist
-        m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
-        m2 = int(min(charge_dac_range[1], threshold_DAC.max() + 2))
+        good_thr_msk = np.isfinite(threshold_DAC) & (threshold_DAC != 0)
+        m1, m2 = np.quantile(threshold_DAC[good_thr_msk], [0.05, 0.95])
+        m1, m2 = max(0.1, m1 - 2), m2 + 2
         for i, (fc, lc, name) in enumerate(FRONTENDS):
             if fc >= col_stop or lc < col_start:
                 continue
@@ -309,7 +310,7 @@ def main(input_file, overwrite=False):
             lc = min(col_n - 1, lc - col_start)
             th = threshold_DAC[fc:lc+1,:]
             th_mean = ufloat(np.mean(th[th>0]), np.std(th[th>0], ddof=1))
-            plt.hist(th.reshape(-1) * 10, bins=100, range=[m1*10, m2*10],
+            plt.hist(th.reshape(-1) * 10, bins=100, range=[0, m2*10],
                      label=f"{name} ${th_mean*10:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle("Threshold distribution")
@@ -318,13 +319,13 @@ def main(input_file, overwrite=False):
         set_integer_ticks(plt.gca().yaxis)
         plt.legend()
         plt.grid(axis='y')
-        plt.xlim(150, 300)
+        # plt.xlim(150, 300)
         # plt.yscale('log')
         pdf.savefig(); plt.clf()
 
         # Threshold map
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=18, vmax=27,
+        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=m1, vmax=m2,
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Threshold map")
@@ -337,8 +338,9 @@ def main(input_file, overwrite=False):
         pdf.savefig(); plt.clf()
 
         # Noise hist
-        # m = int(np.ceil(noise_DAC.max(initial=0, where=np.isfinite(noise_DAC)))) + 1
-        m = 2
+        good_noise_msk = np.isfinite(noise_DAC) & (noise_DAC != 0)
+        m1, m2 = np.quantile(noise_DAC[good_noise_msk], [0.05, 0.95])
+        m1, m2 = max(0.01, m1 - 0.2), m2 + 0.2
         for i, (fc, lc, name) in enumerate(FRONTENDS):
             if fc >= col_stop or lc < col_start:
                 continue
@@ -346,7 +348,7 @@ def main(input_file, overwrite=False):
             lc = min(col_n - 1, lc - col_start)
             ns = noise_DAC[fc:lc+1,:]
             noise_mean = ufloat(np.mean(ns[ns>0]), np.std(ns[ns>0], ddof=1))
-            plt.hist(ns.reshape(-1) * 10, bins=100, range=[0, m*10],
+            plt.hist(ns.reshape(-1) * 10, bins=100, range=[0, m2*10],
                      label=f"{name} ${noise_mean*10:L}$", histtype='step', color=f"C{i}")
         plt.title(subtitle)
         plt.suptitle(f"Noise (width of s-curve slope) distribution")
@@ -360,7 +362,7 @@ def main(input_file, overwrite=False):
 
         # Noise map
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], noise_DAC.transpose(), vmin=0.3, vmax=1,
+        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], noise_DAC.transpose(), vmin=m1, vmax=m2,
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Noise (width of s-curve slope) map")
