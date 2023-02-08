@@ -66,8 +66,9 @@ if __name__ == "__main__":
 
         # Threshold hist
         good_thr_msk = np.isfinite(thresholds) & (thresholds != 0)
-        m1, m2 = np.quantile(thresholds[good_thr_msk], [0.05, 0.95])
-        m1, m2 = max(0.1, m1 - 2), m2 + 2
+        # m1, m2 = np.quantile(thresholds[good_thr_msk], [0.05, 0.95])
+        # m1, m2 = max(0.1, m1 - 2), m2 + 2
+        m1, m2 = 18, 31
         for i, (fc, lc, name) in enumerate(FRONTENDS):
             gtm = good_thr_msk[fc:lc+1,:]
             if not np.any(gtm):
@@ -100,8 +101,9 @@ if __name__ == "__main__":
 
         # Noise hist
         good_noise_msk = np.isfinite(noise) & (noise != 0)
-        m1, m2 = np.quantile(noise[good_noise_msk], [0.05, 0.95])
-        m1, m2 = max(0.01, m1 - 0.2), m2 + 0.2
+        # m1, m2 = np.quantile(noise[good_noise_msk], [0.05, 0.95])
+        # m1, m2 = max(0.01, m1 - 0.2), m2 + 0.2
+        m1, m2 = 0.3, 1.2
         for i, (fc, lc, name) in enumerate(FRONTENDS):
             gnm = good_noise_msk[fc:lc+1,:]
             if not np.any(gnm):
