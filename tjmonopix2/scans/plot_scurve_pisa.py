@@ -77,6 +77,7 @@ def main(input_file, overwrite=False):
 
         # Process one chunk of data at a time
         csz = 2**24
+        random_firing_pixels = set()
         for i_first in tqdm(range(0, n_hits, csz), unit="chunk", disable=n_hits/csz<=1):
             i_last = min(n_hits, i_first + csz)
 
@@ -88,16 +89,33 @@ def main(input_file, overwrite=False):
             hits = hits[scan_area_mask]
             del scan_area_mask
 
+            # Filter hits coming from a random firing pixel (found with the code below)
+            rnd_fire_mask = np.ones_like(hits, bool)
+            for col, row in [(255, 344), (245, 181), (264, 425), (247, 198), (252, 378)]:
+                rnd_fire_mask &= ~((hits["col"] == col) & (hits["row"] == row))
+            hits = hits[rnd_fire_mask]
+            del rnd_fire_mask
+
             with np.errstate(all='ignore'):
                 tot = (hits["te"] - hits["le"]) & 0x7f
-            fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
-
 
             # Determine injected charge for each hit
             vh = scan_params["vcal_high"][hits["scan_param_id"]]
             vl = scan_params["vcal_low"][hits["scan_param_id"]]
             charge_dac = vh - vl
             del vl, vh
+
+            # # Filter hits with ToT < 8 at charge > 60 (from the plots I see they are random hits)
+            # rnd_msk = (tot < 8) & (charge_dac > 60)
+            # for col, row in np.unique(hits[rnd_msk][["col", "row"]]):
+            #     random_firing_pixels.add((col, row))
+            # hits = hits[~rnd_msk]
+            # tot = tot[~rnd_msk]
+            # charge_dac = charge_dac[~rnd_msk]
+            # del rnd_msk
+
+            fe_masks = [(hits["col"] >= fc) & (hits["col"] <= lc) for fc, lc, _ in FRONTENDS]
+
             # Count hits per pixel per injected charge value
             occupancy_tmp, occupancy_edges = np.histogramdd(
                 (hits["col"], hits["row"], charge_dac),
@@ -132,6 +150,8 @@ def main(input_file, overwrite=False):
                     bins=[charge_dac_bins, 479], range=[charge_dac_range, [25e-3*16, 12*16]])[0]
 
             del charge_dac
+
+        print("Random firing pixels:", random_firing_pixels)
 
     # Do the actual plotting
     with PdfPages(output_file) as pdf:
