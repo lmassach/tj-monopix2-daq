@@ -141,9 +141,9 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
 
         # Histogram of ToT
         for (_, _, name), hist in zip(FRONTENDS, tot1d):
-            if np.any(hist != 0):
-                plt.step((tot1d_edges[1:] + tot1d_edges[:-1]) / 2,
-                        hist, where='mid', label=name)
+            if True:#np.any(hist != 0):
+                tmp_bc = (tot1d_edges[1:] + tot1d_edges[:-1]) / 2
+                plt.step(tmp_bc, hist, where='mid', label=f"{name}, peak @ {tmp_bc[np.argmax(hist)]:.4g} clk")
         plt.title("ToT")
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")

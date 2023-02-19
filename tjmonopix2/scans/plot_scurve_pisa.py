@@ -12,6 +12,7 @@ from matplotlib.colors import LogNorm
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.special import erf
+from scipy.stats import linregress
 import tables as tb
 from tqdm import tqdm
 from uncertainties import ufloat
@@ -31,7 +32,7 @@ def average(a, axis=None, weights=1, invalid=np.NaN):
     return np.nan_to_num(np.sum(a * weights, axis=axis).astype(float) / np.sum(weights, axis=axis).astype(float), nan=invalid)
 
 
-def main(input_file, overwrite=False):
+def main(input_file, overwrite=False, electrons=False):
     output_file = os.path.splitext(input_file)[0] + "_scurve.pdf"
     if os.path.isfile(output_file) and not overwrite:
         return
@@ -273,18 +274,32 @@ def main(input_file, overwrite=False):
         for (fc, lc, name), hist in zip(chain([(0, 511, 'All FEs')], FRONTENDS), tot_hist):
             if fc >= col_stop or lc < col_start:
                 continue
+            mf = 10 if electrons else 1
             plt.pcolormesh(
-                occupancy_edges[2] * 10, np.linspace(-0.5, 127.5, 129, endpoint=True),
+                occupancy_edges[2] * mf, np.linspace(-0.5, 127.5, 129, endpoint=True),
                 hist.transpose(), vmin=1, cmap=VIRIDIS_WHITE_UNDER, rasterized=True)  # Necessary for quick save and view in PDF
             plt.title(subtitle)
             plt.suptitle(f"ToT curve ({name})")
-            plt.xlabel("Injected charge [$e^-$]")
+            plt.xlabel("Injected charge [$e^-$]" if electrons else "Injected charge [DAC]")
             plt.ylabel("ToT [25 ns]")
             plt.ylim(0, 64)
             plt.grid(axis='both',)
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
             cb = integer_ticks_colorbar()
             cb.set_label("Hits / bin")
+            # Fit with line
+            tmp_min_q = 75  # 40
+            tmp_tot = np.linspace(0, 127, 128, endpoint=True)
+            tmp_avg = np.sum(tmp_tot.reshape((1, -1)) * hist, axis=1) / np.sum(hist, axis=1)  # hist[charge_bin,tot_bin]
+            tmp_res = linregress(charge_dac_values[tmp_min_q:], tmp_avg[tmp_min_q:])
+            tmp_ln = lambda x: x * tmp_res.slope / mf + tmp_res.intercept
+            print(name, tmp_res)
+            # plt.axline((0, tmp_res.intercept), slope=tmp_res.slope/mf, color='r')
+            tmp_xl, tmp_xu = plt.xlim()
+            plt.plot([tmp_min_q, tmp_xu], [tmp_ln(tmp_min_q), tmp_ln(tmp_xu)], 'r-')
+            plt.plot([tmp_xl, tmp_min_q], [tmp_ln(tmp_xl), tmp_ln(tmp_min_q)], 'r--')
+            plt.annotate(f"$y=mx+q$\n$m={ufloat(tmp_res.slope,tmp_res.stderr):L}$ clk/DAC\n$q={ufloat(tmp_res.intercept,tmp_res.intercept_stderr):L}$ clk",
+                         (0.05, 0.95), xycoords='axes fraction', ha='left', va='top', color='r')
             pdf.savefig(); plt.clf()
 
         # Compute the threshold and noise for each pixels by fitting
@@ -298,7 +313,11 @@ def main(input_file, overwrite=False):
                 if not (np.any(o == 0) and np.any(o == 1)):
                     continue
                 thr = charge_dac_np[np.argmin(np.abs(o - 0.5))]
-                popt, pcov = curve_fit(s_curve, charge_dac_np, o, p0=(thr, 1))
+                try:
+                    popt, pcov = curve_fit(s_curve, charge_dac_np, o, p0=(thr, 1))
+                except RuntimeError:
+                    popt = np.full(2, np.nan)
+                    pcov = np.full((2, 2), np.nan)
                 if not np.all(np.isfinite(popt)) or not np.all(np.isfinite(pcov)):
                     print("Fit failed:", c + col_start, r + row_start, o)
                     continue
@@ -450,6 +469,7 @@ if __name__ == "__main__":
              " If not given, looks in output_data/module_0/chip_0.")
     parser.add_argument("-f", "--overwrite", action="store_true",
                         help="Overwrite plots when already present.")
+    parser.add_argument("-e", action="store_true", help="Use e- instead of DAC.")
     args = parser.parse_args()
 
     files = []
@@ -462,6 +482,6 @@ if __name__ == "__main__":
 
     for fp in tqdm(files, unit="file"):
         try:
-            main(fp, args.overwrite)
+            main(fp, args.overwrite, electrons=args.e)
         except Exception:
             print(traceback.format_exc())
