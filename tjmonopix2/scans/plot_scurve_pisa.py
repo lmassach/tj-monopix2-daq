@@ -287,18 +287,44 @@ def main(input_file, overwrite=False, electrons=False):
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
             cb = integer_ticks_colorbar()
             cb.set_label("Hits / bin")
-            # Fit with line
-            tmp_min_q = 75  # 40
+            # Fit with thing
+            tmp_min_q = 22 #65
+            tmp_extrap_tot = 68 #22
+            def tmp_nf(x):
+                return np.where((x > 0) & np.isfinite(x), x, 0)
+            def tmp_ff(x, a, b, c, t):
+                return tmp_nf(np.where(x > t, a * x + b - c / (x - t), 0))
             tmp_tot = np.linspace(0, 127, 128, endpoint=True)
             tmp_avg = np.sum(tmp_tot.reshape((1, -1)) * hist, axis=1) / np.sum(hist, axis=1)  # hist[charge_bin,tot_bin]
-            tmp_res = linregress(charge_dac_values[tmp_min_q:], tmp_avg[tmp_min_q:])
-            tmp_ln = lambda x: x * tmp_res.slope / mf + tmp_res.intercept
-            print(name, tmp_res)
-            # plt.axline((0, tmp_res.intercept), slope=tmp_res.slope/mf, color='r')
-            tmp_xl, tmp_xu = plt.xlim()
-            plt.plot([tmp_min_q, tmp_xu], [tmp_ln(tmp_min_q), tmp_ln(tmp_xu)], 'r-')
-            plt.plot([tmp_xl, tmp_min_q], [tmp_ln(tmp_xl), tmp_ln(tmp_min_q)], 'r--')
-            plt.annotate(f"$y=mx+q$\n$m={ufloat(tmp_res.slope,tmp_res.stderr):L}$ clk/DAC\n$q={ufloat(tmp_res.intercept,tmp_res.intercept_stderr):L}$ clk",
+            popt, pcov = curve_fit(tmp_ff, charge_dac_values[tmp_min_q:], tmp_nf(tmp_avg)[tmp_min_q:], p0=(0.2, -0.3, 100, 55))
+            pstd = np.sqrt(pcov.diagonal())
+            # Extrapolate via binary search
+            tmp_a, tmp_b = 100, 200
+            tmp_c = (tmp_a + tmp_b) / 2
+            for tmp_i in range(20):
+                tmp_fa, tmp_fb = tmp_ff(tmp_a, *popt) - tmp_extrap_tot, tmp_ff(tmp_b, *popt) - tmp_extrap_tot
+                tmp_fc = tmp_ff(tmp_c, *popt) - tmp_extrap_tot
+                # print(f"DBG iter={tmp_i} a={tmp_a} b={tmp_b} c={tmp_c} fa={tmp_fa} fb={tmp_fb} fc={tmp_fc}")
+                if np.sign(tmp_fc) == 0:
+                    # print("DBG break")
+                    break
+                elif np.sign(tmp_fc) * np.sign(tmp_fa) < 0:
+                    # print("DBG b := c")
+                    tmp_b = tmp_c
+                    tmp_c = (tmp_a + tmp_b) / 2
+                elif np.sign(tmp_fc) * np.sign(tmp_fb) < 0:
+                    # print("DBG a := c")
+                    tmp_a = tmp_c
+                    tmp_c = (tmp_a + tmp_b) / 2
+                else:
+                    raise RuntimeError("Binary search")
+            tmp_fc = tmp_ff(tmp_c, *popt) - tmp_extrap_tot
+            # Show results
+            print(name, tmp_c, tmp_fc, tmp_extrap_tot, popt)
+            plt.plot(np.asarray(charge_dac_values), tmp_ff(np.asarray(charge_dac_values), *popt), 'r-')
+            plt.annotate(f"$y=ax+b-c/(x-t)$\n$a={ufloat(popt[0],pstd[0]):L}$ clk/DAC\n$b={ufloat(popt[1],pstd[1]):L}$ clk"
+                         f"\n$c={ufloat(popt[2],pstd[2]):L}$ clk DAC\n$t={ufloat(popt[3],pstd[3]):L}$ DAC"
+                         f"\nToT = {tmp_extrap_tot} @ {tmp_c:.2f} DAC",
                          (0.05, 0.95), xycoords='axes fraction', ha='left', va='top', color='r')
             pdf.savefig(); plt.clf()
 
