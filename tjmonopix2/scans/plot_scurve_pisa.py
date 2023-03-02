@@ -288,44 +288,57 @@ def main(input_file, overwrite=False, electrons=False):
             cb = integer_ticks_colorbar()
             cb.set_label("Hits / bin")
             # Fit with thing
-            tmp_min_q = 22 #65
-            tmp_extrap_tot = 68 #22
+            tmp_min_q = 45 #65
+            tmp_extrap_tot = 35 #22
+            tmp_hist_clean_min = 0
             def tmp_nf(x):
                 return np.where((x > 0) & np.isfinite(x), x, 0)
             def tmp_ff(x, a, b, c, t):
                 return tmp_nf(np.where(x > t, a * x + b - c / (x - t), 0))
             tmp_tot = np.linspace(0, 127, 128, endpoint=True)
-            tmp_avg = np.sum(tmp_tot.reshape((1, -1)) * hist, axis=1) / np.sum(hist, axis=1)  # hist[charge_bin,tot_bin]
-            popt, pcov = curve_fit(tmp_ff, charge_dac_values[tmp_min_q:], tmp_nf(tmp_avg)[tmp_min_q:], p0=(0.2, -0.3, 100, 55))
-            pstd = np.sqrt(pcov.diagonal())
-            # Extrapolate via binary search
-            tmp_a, tmp_b = 100, 200
-            tmp_c = (tmp_a + tmp_b) / 2
-            for tmp_i in range(20):
-                tmp_fa, tmp_fb = tmp_ff(tmp_a, *popt) - tmp_extrap_tot, tmp_ff(tmp_b, *popt) - tmp_extrap_tot
+            hist_clean = np.where(hist > tmp_hist_clean_min, hist, 0)
+            tmp_avg = np.sum(tmp_tot.reshape((1, -1)) * hist_clean, axis=1) / np.sum(hist_clean, axis=1)  # hist[charge_bin,tot_bin]
+            p0 = (0.17, 2, 100, 30)
+            try:
+                popt, pcov = curve_fit(tmp_ff, charge_dac_values[tmp_min_q:], tmp_nf(tmp_avg)[tmp_min_q:], p0=p0)
+                pstd = np.sqrt(pcov.diagonal())
+                # Extrapolate via binary search
+                tmp_a, tmp_b = 100, 300
+                tmp_c = (tmp_a + tmp_b) / 2
+                for tmp_i in range(21):
+                    tmp_fa, tmp_fb = tmp_ff(tmp_a, *popt) - tmp_extrap_tot, tmp_ff(tmp_b, *popt) - tmp_extrap_tot
+                    tmp_fc = tmp_ff(tmp_c, *popt) - tmp_extrap_tot
+                    # print(f"DBG iter={tmp_i} a={tmp_a} b={tmp_b} c={tmp_c} fa={tmp_fa} fb={tmp_fb} fc={tmp_fc}")
+                    if np.sign(tmp_fc) == 0:
+                        # print("DBG break")
+                        break
+                    elif np.sign(tmp_fc) * np.sign(tmp_fa) < 0:
+                        # print("DBG b := c")
+                        tmp_b = tmp_c
+                        tmp_c = (tmp_a + tmp_b) / 2
+                    elif np.sign(tmp_fc) * np.sign(tmp_fb) < 0:
+                        # print("DBG a := c")
+                        tmp_a = tmp_c
+                        tmp_c = (tmp_a + tmp_b) / 2
+                    else:
+                        raise RuntimeError("Binary search")
                 tmp_fc = tmp_ff(tmp_c, *popt) - tmp_extrap_tot
-                # print(f"DBG iter={tmp_i} a={tmp_a} b={tmp_b} c={tmp_c} fa={tmp_fa} fb={tmp_fb} fc={tmp_fc}")
-                if np.sign(tmp_fc) == 0:
-                    # print("DBG break")
-                    break
-                elif np.sign(tmp_fc) * np.sign(tmp_fa) < 0:
-                    # print("DBG b := c")
-                    tmp_b = tmp_c
-                    tmp_c = (tmp_a + tmp_b) / 2
-                elif np.sign(tmp_fc) * np.sign(tmp_fb) < 0:
-                    # print("DBG a := c")
-                    tmp_a = tmp_c
-                    tmp_c = (tmp_a + tmp_b) / 2
-                else:
-                    raise RuntimeError("Binary search")
-            tmp_fc = tmp_ff(tmp_c, *popt) - tmp_extrap_tot
-            # Show results
-            print(name, tmp_c, tmp_fc, tmp_extrap_tot, popt)
-            plt.plot(np.asarray(charge_dac_values) * mf, tmp_ff(np.asarray(charge_dac_values), *popt), 'r-')
-            plt.annotate(f"$y=ax+b-c/(x-t)$\n$a={ufloat(popt[0],pstd[0])/mf:L}$ clk/$e^-$\n$b={ufloat(popt[1],pstd[1]):L}$ clk"
-                         f"\n$c={ufloat(popt[2],pstd[2])*mf:L}$ clk $e^-$\n$t={ufloat(popt[3],pstd[3])*mf:L}$ $e^-$"
-                         f"\nToT = {tmp_extrap_tot} @ $Q_{{inj}} = {tmp_c*mf:.0f}$ $e^-$",
-                         (0.05, 0.95), xycoords='axes fraction', ha='left', va='top', color='r')
+                # Show results
+                print(name, tmp_c, tmp_fc, tmp_extrap_tot, popt)
+                plt.plot(np.asarray(charge_dac_values) * mf, tmp_ff(np.asarray(charge_dac_values), *popt), 'r-')
+                plt.annotate(f"$y=ax+b-c/(x-t)$\n$a={ufloat(popt[0],pstd[0])/mf:L}$ clk/$e^-$\n$b={ufloat(popt[1],pstd[1]):L}$ clk"
+                             f"\n$c={ufloat(popt[2],pstd[2])*mf:L}$ clk $e^-$\n$t={ufloat(popt[3],pstd[3])*mf:L}$ $e^-$"
+                             f"\nToT = {tmp_extrap_tot} @ $Q_{{inj}} = {tmp_c*mf:.0f}$ $e^-$"
+                             + (f"\nExcl. bins w < {tmp_hist_clean_min} entries" if tmp_hist_clean_min else ""),
+                             (0.05, 0.95), xycoords='axes fraction', ha='left', va='top', color='r')
+            except RuntimeError:
+                plt.plot(np.asarray(charge_dac_values) * mf, tmp_ff(np.asarray(charge_dac_values), *p0), 'r--')
+                plt.plot(charge_dac_values, tmp_nf(tmp_avg), 'r.')
+                plt.annotate("Fit failed, showing initial parameters"
+                             f"\n$y=ax+b-c/(x-t)$\n$a={p0[0]:.4g}$\n$b={p0[1]:.4g}$"
+                             f"\n$c={p0[2]:.4g}$\n$t={p0[3]:.4g}$",
+                             (0.05, 0.95), xycoords='axes fraction', ha='left', va='top', color='r')
+                print("WARNING Fit of ToT vs Qinj failed")
             pdf.savefig(); plt.clf()
 
         # Compute the threshold and noise for each pixels by fitting
