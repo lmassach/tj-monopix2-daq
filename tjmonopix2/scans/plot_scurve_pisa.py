@@ -288,19 +288,28 @@ def main(input_file, overwrite=False, electrons=False):
             cb = integer_ticks_colorbar()
             cb.set_label("Hits / bin")
             # Fit with thing
-            tmp_min_q = 45 #65
-            tmp_extrap_tot = 35 #22
+            tmp_extrap_tot = 22 #22
             tmp_hist_clean_min = 0
+            @np.errstate(all='ignore')
             def tmp_nf(x):
                 return np.where((x > 0) & np.isfinite(x), x, 0)
+            @np.errstate(all='ignore')
             def tmp_ff(x, a, b, c, t):
                 return tmp_nf(np.where(x > t, a * x + b - c / (x - t), 0))
-            tmp_tot = np.linspace(0, 127, 128, endpoint=True)
             hist_clean = np.where(hist > tmp_hist_clean_min, hist, 0)
-            tmp_avg = np.sum(tmp_tot.reshape((1, -1)) * hist_clean, axis=1) / np.sum(hist_clean, axis=1)  # hist[charge_bin,tot_bin]
-            p0 = (0.17, 2, 100, 30)
+            tmp_avg = np.sum(np.asarray(charge_dac_values).reshape((-1, 1)) * hist_clean, axis=0) / np.sum(hist_clean, axis=0)  # hist[charge_bin,tot_bin]
+            p0 = (0.17, 2, 100, tmp_avg[0])
             try:
-                popt, pcov = curve_fit(tmp_ff, charge_dac_values[tmp_min_q:], tmp_nf(tmp_avg)[tmp_min_q:], p0=p0)
+                tmp_tot = np.linspace(0, 127, 128, endpoint=True)
+                tmp_msk = np.isfinite(tmp_avg)
+                tmp_last_valid = 0
+                for i in range(len(tmp_msk)):
+                    if not tmp_msk[i]: break
+                    tmp_last_valid = i
+                tmp_last_valid -= 3
+                if tmp_last_valid < 2:
+                    raise RuntimeError("Not enough points to fit")
+                popt, pcov = curve_fit(tmp_ff, tmp_avg[:tmp_last_valid], tmp_tot[:tmp_last_valid], p0=p0)
                 pstd = np.sqrt(pcov.diagonal())
                 # Extrapolate via binary search
                 tmp_a, tmp_b = 100, 300
@@ -331,9 +340,10 @@ def main(input_file, overwrite=False, electrons=False):
                              f"\nToT = {tmp_extrap_tot} @ $Q_{{inj}} = {tmp_c*mf:.0f}$ $e^-$"
                              + (f"\nExcl. bins w < {tmp_hist_clean_min} entries" if tmp_hist_clean_min else ""),
                              (0.05, 0.95), xycoords='axes fraction', ha='left', va='top', color='r')
+                # plt.plot(tmp_avg, tmp_tot, 'r|')
             except RuntimeError:
                 plt.plot(np.asarray(charge_dac_values) * mf, tmp_ff(np.asarray(charge_dac_values), *p0), 'r--')
-                plt.plot(charge_dac_values, tmp_nf(tmp_avg), 'r.')
+                plt.plot(tmp_avg, tmp_tot, 'r|')
                 plt.annotate("Fit failed, showing initial parameters"
                              f"\n$y=ax+b-c/(x-t)$\n$a={p0[0]:.4g}$\n$b={p0[1]:.4g}$"
                              f"\n$c={p0[2]:.4g}$\n$t={p0[3]:.4g}$",
