@@ -23,25 +23,58 @@ scan_configuration = {
 
 
     # Pixel to inject
-    'inj_col': 140, # 220
-    'inj_row': 132, # 200
+    'inj_col': 30, # 220
+    'inj_row': 510, # 200
 
     'n_injections': 10000,
     'reset_bcid': True,
 }
 
 register_overrides = {
+    # 'VL': 1,  # Inject VH-VL (fixed charge)
+    # 'VH': 140,
+    # 'ITHR': 10,  # Default 64
+    # 'IBIAS': 50,  # Default 50
+    # 'VRESET': 110,  # Default 143, 110 for lower THR
+    # 'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+    # 'VCASP': 93,  # Default 93
+    # "VCASC": 228,  # Default 228
+    # "IDB": 10,  # Default 100
+    # 'ITUNE': 150,  # Default TB 53, 150 for lower THR tuning
+    # 'VCLIP': 255,  # Default 255
+
     'VL': 1,  # Inject VH-VL (fixed charge)
     'VH': 140,
-    'ITHR': 10,  # Default 64
+    # 'ITHR':10,  # Default 64
+    # 'IBIAS': 50,  # Default 50
+    # 'VRESET': 143,  # Default 143, 110 for lower THR
+    # 'ICASN': 80,  # Default TB 0 , 150 for -3V , 200 for -6V
+    # 'VCASP': 93,  # Default 93
+    # "VCASC": 228,  # Default 228
+    # "IDB": 20,  # Default 100
+    # 'ITUNE': 80,  # Default TB 53, 150 for lower THR tuning
+    # 'VCLIP': 255,  # Default 255
+
+    # 'ITHR':64,  # Default 64
+    # 'IBIAS': 50,  # Default 50
+    # 'VRESET': 143,  # Default 143, 110 for lower THR
+    # 'ICASN': 80,  # Default TB 0 , 150 for -3V , 200 for -6V
+    # 'VCASP': 93,  # Default 93
+    # "VCASC": 228,  # Default 228
+    # "IDB": 30,  # Default 100
+    # 'ITUNE': 120,  # Default TB 53, 150 for lower THR tuning
+    # 'VCLIP': 255,  # Default 255
+
+    'ITHR':10,  # Default 64
     'IBIAS': 50,  # Default 50
-    'VRESET': 110,  # Default 143, 110 for lower THR
-    'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+    'VRESET': 143,  # Default 143, 110 for lower THR
+    'ICASN': 30,  # Default TB 0 , 150 for -3V , 200 for -6V
     'VCASP': 93,  # Default 93
     "VCASC": 228,  # Default 228
-    "IDB": 10,  # Default 100
+    "IDB": 30,  # Default 100
     'ITUNE': 150,  # Default TB 53, 150 for lower THR tuning
     'VCLIP': 255,  # Default 255
+
 
     # # set readout cycle timing as in TB
     # 'FREEZE_START_CONF': 41,  # Default 1, TB 41
@@ -54,9 +87,9 @@ register_overrides = {
     'FREEZE_START_CONF': 10,  # Default 1
     'READ_START_CONF': 13,  # Default 3
     'READ_STOP_CONF': 15,  # Default 5
-    'LOAD_CONF': 60,  # Default 7
-    'FREEZE_STOP_CONF': 61,  # Default 8
-    'STOP_CONF': 61  # Default 8
+    'LOAD_CONF': 30,  # Default 7
+    'FREEZE_STOP_CONF': 31,  # Default 8
+    'STOP_CONF': 31  # Default 8
 }
 
 
@@ -88,8 +121,9 @@ class HotPixelScan(ScanBase):
         # self.chip.masks['tdac'][1,140] = 3
         # self.chip.masks['enable'][220,140] = True # enable an hot pixel
         # self.chip.masks['tdac'][220,140] = 3
-        self.chip.masks['enable'][132,133] = True # enable an hot pixel
-        self.chip.masks['tdac'][132,133] = 1
+        self.chip.masks['enable'][50,221] = True # enable an hot pixel
+        self.chip.masks['tdac'][50,221] = 3
+        self.chip.masks['tdac'][30,510] = 4 # pixel injected
 
         # Disable W8R13 bad/broken columns (25, 160, 161, 224, 274, 383-414 included, 447) and pixels
         self.chip.masks['enable'][25,:] = False  # Many pixels don't fire

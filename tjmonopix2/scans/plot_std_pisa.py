@@ -146,8 +146,8 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         plt.title("ToT")
         plt.xlabel("ToT [25 ns]")
         plt.ylabel("Hits / bin")
-        #plt.xlim(0, 30)
-        #plt.xlim(10, 128)
+        #plt.xlim(0, 50)
+        plt.xlim(0, 128)
         #plt.ylim(0, max(h[10:].max() for h in tot1d) * 1.2)
         plt.grid(axis='both')
         if log_tot:

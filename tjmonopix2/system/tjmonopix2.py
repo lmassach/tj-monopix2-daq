@@ -990,7 +990,7 @@ class TJMonoPix2(object):
         else:
             raise RuntimeError('Timeout while waiting for register response.')
 
-    def write_cal(self, PulseStartCnfg=1, PulseStopCnfg=512, write=True, reset_bcid=False):
+    def write_cal(self, PulseStartCnfg=1, PulseStopCnfg=1500, write=True, reset_bcid=False):
         '''
             Command to send a digital or analog injection to the chip.
             Digital or analog injection is selected globally via the INJECTION_SELECT register.
@@ -1020,7 +1020,8 @@ class TJMonoPix2(object):
 
         return indata
 
-    def inject(self, PulseStartCnfg=1, PulseStopCnfg=512, repetitions=1, latency=1400, write=True, reset_bcid=False):
+    def inject(self, PulseStartCnfg=1, PulseStopCnfg=1500, repetitions=1, latency=1400, write=True, reset_bcid=False):
+        # PulseStopCnfg is in 320 MHz clock units
         indata = self.write_sync(write=False) * 4
         indata += self.write_cal(PulseStartCnfg=PulseStartCnfg, PulseStopCnfg=PulseStopCnfg, write=False, reset_bcid=reset_bcid)  # Injection
         indata += self.write_sync(write=False) * latency

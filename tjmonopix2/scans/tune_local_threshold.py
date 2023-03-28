@@ -21,16 +21,16 @@ from tjmonopix2.scans.shift_and_inject import shift_and_inject, get_scan_loop_ma
 from tjmonopix2.analysis import online as oa
 
 scan_configuration = {
-    'start_column': 0,  # 213
-    'stop_column': 447,  # 223
-    'start_row': 150,  # 120
+    'start_column': 224,  # 213
+    'stop_column': 448,  # 223
+    'start_row': 0,  # 120
     'stop_row': 512,  # 220
 
     'n_injections': 100,
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 30+22,
+    'VCAL_HIGH': 30+24,
 
     'bcid_reset': True,  # BCID reset before injection
     #'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
@@ -42,9 +42,13 @@ scan_configuration = {
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230115_163629_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=50 DAC psub pwell=-6V cols=224-447 rows=150-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230115_175350_local_threshold_tuning_interpreted.h5'
-   # chipW8R13 File produced w BCID reset target=32 VCASC=228 DAC psub pwell=-6V cols=0-447 rows=150-512
-    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-01-15/chip_0/20230115_183553_local_threshold_tuning_interpreted.h5'
-}
+    #chipW8R13 File produced w BCID reset target=32 VCASC=228 DAC psub pwell=-6V cols=0-447 rows=150-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-01-15/chip_0/20230115_183553_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=40 Lars setting but ICASN=0 settings psub pwell=-6V cols=224-448 rows=150-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230227_171449_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=27 ITHR=30 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230324_191453_local_threshold_tuning_interpreted.h5'
+    }
 
 register_overrides = {
  #   'ITHR':30,  # Default 64
@@ -56,16 +60,59 @@ register_overrides = {
  #   "IDB": 100,  # Default 100
  #   'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
  #   'VCLIP': 255,  # Default 255
+
+    # 'ITHR':20,  # Default 64
+    # 'IBIAS': 50,  # Default 50
+    # 'VRESET': 110,  # Default 143, 110 for lower THR
+    # 'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+    # 'VCASP': 93,  # Default 93
+    # "VCASC": 228,  # Default 228
+    # "IDB": 100,  # Default 100
+    # 'ITUNE': 200,  # Default TB 53, 150 for lower THR tuning
+    # 'VCLIP': 255,  # Default 255
+
     # Lars proposed tuning with target ~ 23 but in this chip seems ITHR=30
-    'ITHR':64,  # Default 64
-    'IBIAS': 100,  # Default 50
-    'VRESET': 128,  # Default 143, 110 for lower THR
-    'ICASN': 54,  # Default TB 0 , 150 for -3V , 200 for -6V
-    'VCASP': 93,  # Default 93
-    "VCASC": 228,  # Default 228
-    "IDB": 100,  # Default 100
-    'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
-    'VCLIP': 255,  # Default 255
+    #  'ITHR':64,  # Default 64
+    #  'IBIAS': 100,  # Default 50
+    #  'VRESET': 128,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
+    #  'ICASN': 54,  # Lars proposed 54
+    #  'VCASP': 93,  # Default 93
+    #  "VCASC": 150,  # Lars proposed 150
+    #  "IDB": 100,  # Default 100
+    #  'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
+    #  'VCLIP': 255,  # Default 255
+     'ITHR':64,  # Default 64
+     'IBIAS': 50,  # Default 50
+     'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
+     'ICASN': 80,  # Lars proposed 54
+     'VCASP': 93,  # Default 93
+     "VCASC": 228,  # Lars proposed 150
+     "IDB": 60,  # Default 100
+     'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+     'VCLIP': 255,  # Default 255
+
+    # HV TB settings
+    # 'ITHR':64,  # Default 64
+    # 'IBIAS': 60,  # Default 50
+    # 'VRESET': 50,  # Default 143, 110 for lower THR
+    # 'ICASN': 8,  # Default TB 0 , 150 for -3V , 200 for -6V
+    # 'VCASP': 40,  # Default 93
+    # "VCASC": 228,  # Default 228
+    # "IDB": 100,  # Default 100
+    # 'ITUNE': 53,  # Default TB 53, 150 for lower THR tuning
+    # 'VCLIP': 255,  # Default 255
+
+    # TB settings
+    #'ITHR':64,  # Default 64
+    #'IBIAS': 50,  # Default 50
+    #'VRESET': 143,  # Default 143, 110 for lower THR
+    #'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+    #'VCASP': 93,  # Default 93
+    #"VCASC": 228,  # Default 228
+    #"IDB": 100,  # Default 100
+    #'ITUNE': 53,  # Default TB 53, 150 for lower THR tuning
+    #'VCLIP': 255,  # Default 255
+
     # Enable VL and VH measurement and override
     # 'MON_EN_VH': 0,
     # 'MON_EN_VL': 0,

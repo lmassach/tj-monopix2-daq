@@ -20,10 +20,10 @@ from tjmonopix2.analysis import online as oa
 
 
 scan_configuration = {
-    'start_column': 213, # 216
-    'stop_column': 223, #230
-    'start_row': 120, #120
-    'stop_row': 220, #220
+    'start_column': 480, # 216
+    'stop_column': 512, #230
+    'start_row': 0, #120
+    'stop_row': 512, #220
 
     'n_injections': 100,
 

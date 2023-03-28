@@ -15,12 +15,12 @@ from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.analysis import analysis
 
 scan_configuration = {
-    'start_column': 0,
-    'stop_column': 447,
+    'start_column': 224,
+    'stop_column': 448,
     'start_row': 0,
     'stop_row': 512,
 
-    'scan_time': 30,  # seconds
+    'scan_time': 10,  # seconds
     #'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
     #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning_interpreted.h5",  # Optional h5 file to load the TDAC values from
     # file produced w/o BCID target THR=20 DAC and pwell/psub=-6V
@@ -48,33 +48,108 @@ scan_configuration = {
     #chipW8r13 File produced w BCID reset target=25 DAC psub/pwell=-6V cols=224-447 rows=0-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230108_081926_local_threshold_tuning_interpreted.h5'
     #chipW8r13 File produced w BCID reset target=25 DAC psub/pwell=-6V cols=0-447 rows=0-512
-    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230108_084232_local_threshold_tuning_interpreted.h5'
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-01-08/chip_0/20230108_084232_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=32 VCASC=228 DAC psub pwell=-6V cols=0-447 rows=150-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-01-15/chip_0/20230115_183553_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=22 VCASC=228 ICASN=54 DAC psub pwell=-6V cols=0-447 rows=150-512
-    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230116_130625_local_threshold_tuning_interpreted.h5'
-}
+    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230116_130625_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=40 TB settings psub pwell=-6V cols=224-447 rows=150-512
+    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230227_123341_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=40 Lars setting but ICASN=0 settings psub pwell=-6V cols=224-448 rows=150-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230227_171449_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=24 Lars setting but ICASN=150 settings psub pwell=-6V cols=224-448 rows=150-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230227_181812_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=43 TB settings psub pwell=-6V cols=225-230 rows=150-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230301_153124_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=23 Lars setting psub pwell=-6V cols=225-448 rows=150-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230306_115601_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=25 ITHR=20 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230325_153148_local_threshold_tuning_interpreted.h5'
+     # chipW8R13 File produced w BCID reset target=25 ITHR=64 ICASN=80 settings psub pwell=-6V cols=224-448 rows=0-512
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
+ }
 
 register_overrides = {
- #  'ITHR':30,  # Default 64
- #   'IBIAS': 50,  # Default 50
- #   'VRESET': 110,  # Default 143, 110 for lower THR
- #   'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
- #   'VCASP': 93,  # Default 93
- #   "VCASC": 228,  # Default 228, lars proposed 150
- #   "IDB": 100,  # Default 100
- #   'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
- #   'VCLIP': 255,  # Default 255
+    # 'ITHR':10,  # Default 64
+    # 'IBIAS': 50,  # Default 50
+    # 'VRESET': 110,  # Default 143, 110 for lower THR
+    # 'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+    # 'VCASP': 93,  # Default 93
+    # "VCASC": 228,  # Default 228
+    # "IDB": 100,  # Default 100
+    # 'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+    # 'VCLIP': 255,  # Default 255
+
+    #'ITHR':30,  # Default 64
+    #'IBIAS': 50,  # Default 50
+    #'VRESET': 110,  # Default 143, 110 for lower THR
+    #'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+    #'VCASP': 93,  # Default 93
+    #"VCASC": 228,  # Default 228, lars proposed 150
+    #"IDB": 100,  # Default 100
+    #'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
+    #'VCLIP': 255,  # Default 255
+
 # Lars proposed tuning with target ~ 23 but in this chip seems ITHR=30
-    'ITHR':64,  # Default 64
-    'IBIAS': 100,  # Default 50
-    'VRESET': 128,  # Default 143, 110 for lower THR
-    'ICASN': 54,  # Lars proposed 54
-    'VCASP': 93,  # Default 93
-    "VCASC": 228,  # Lars proposed 154
-    "IDB": 100,  # Default 100
-    'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
-    'VCLIP': 255,  # Default 255
+    #  'ITHR':64,  # Default 64
+    #  'IBIAS': 100,  # Default 50
+    #  'VRESET': 128,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
+    #  'ICASN': 54,  # Lars proposed 54
+    #  'VCASP': 93,  # Default 93
+    #  "VCASC": 150,  # Lars proposed 150
+    #  "IDB": 100,  # Default 100
+    #  'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
+    #  'VCLIP': 255,  # Default 255
+     'ITHR':64,  # Default 64
+     'IBIAS': 50,  # Default 50
+     'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
+     'ICASN': 80,  # Lars proposed 54
+     'VCASP': 93,  # Default 93
+     "VCASC": 228,  # Lars proposed 150
+     "IDB": 50,  # Default 100
+     'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+     'VCLIP': 255,  # Default 255
+
+
+    # HV  settings
+    # 'ITHR':30,  # Default 64
+    # 'IBIAS': 60,  # Default 50
+    # 'VRESET': 50,  # Default 143, 110 for lower THR
+    # 'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+    # 'VCASP': 40,  # Default 93
+    # "VCASC": 228,  # Default 228
+    # "IDB": 150,  # Default 100
+    # 'ITUNE': 150,  # Default TB 53, 150 for lower THR tuning
+    # 'VCLIP': 255,  # Default 255
+
+    # 'ITHR':30,  # Default 64
+    # 'IBIAS': 60,  # Default 50
+    # 'VRESET': 100,  # Default 143, 110 for lower THR
+    # 'ICASN': 8,  # Default TB 0 , 150 for -3V , 200 for -6V
+    # 'VCASP': 40,  # Default 93
+    # "VCASC": 228,  # Default 228
+    # "IDB": 100,  # Default 100
+    # 'ITUNE': 53,  # Default TB 53, 150 for lower THR tuning
+    # 'VCLIP': 255,  # Default 255
+
+    # TB settings
+    # 'ITHR':64,  # Default 64
+    # 'IBIAS': 50,  # Default 50
+    # 'VRESET': 143,  # Default 143, 110 for lower THR
+    # 'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+    # 'VCASP': 93,  # Default 93
+    # "VCASC": 228,  # Default 228
+    # "IDB": 100,  # Default 100
+    # 'ITUNE': 53,  # Default TB 53, 150 for lower THR tuning
+    # 'VCLIP': 255,  # Default 255
+
+    # set readout cycle timing as in TB/or as default in Pisa
+    #'FREEZE_START_CONF': 10,  # Default 1, TB 41
+    #'READ_START_CONF': 13,  # Default 3, TB 81
+    #'READ_STOP_CONF': 15,  # Default 5, TB 85
+    #'LOAD_CONF': 30,  # Default 7, TB 119
+    #'FREEZE_STOP_CONF': 31,  # Default 8, TB 120
+    #'STOP_CONF': 31,  # Default 8, TB 120
 
     # set readout cycle timing as in TB/or as default in Pisa
     'FREEZE_START_CONF': 10,  # Default 1, TB 41
@@ -83,6 +158,13 @@ register_overrides = {
     'LOAD_CONF': 30,  # Default 7, TB 119
     'FREEZE_STOP_CONF': 31,  # Default 8, TB 120
     'STOP_CONF': 31,  # Default 8, TB 120
+    # 'FREEZE_START_CONF': 60,  # Default 1, TB 41
+    # 'READ_START_CONF': 63,  # Default 3, TB 81
+    # 'READ_STOP_CONF': 65,  # Default 5, TB 85
+    # 'LOAD_CONF': 110,  # Default 7, TB 119
+    # 'FREEZE_STOP_CONF': 111,  # Default 8, TB 120
+    # 'STOP_CONF': 111,  # Default 8, TB 120
+
    # Enable analog monitoring pixel
     'EN_PULSE_ANAMON_L': 1,
     'ANAMON_SFN_L': 0b0001,
@@ -132,6 +214,7 @@ class SourceScan(ScanBase):
         self.chip.masks['enable'][215,101] = False
         self.chip.masks['enable'][191:223,:] = False  # cols 191-223 are broken since Nov/dec very low THR
 
+
         # # Noisy/hot W8R13 pixels
         # for col, row in [(219, 161), (222, 188), (219, 192), (219, 129), (221, 125), (219, 190), (220, 205), (220, 144), (220, 168), (219, 179), (221, 136), (222, 186), (219, 163), (221, 205), (226, 135), (222, 174), (221, 199), (222, 185), (221, 203), (225, 181), (220, 123), (222, 142), (223, 143), (220, 154), (221, 149), (221, 179), (222, 120), (219, 125)] \
         #         + [(227, 167), (222, 177), (221, 156), (221, 196), (219, 170), (221, 150), (222, 172), (221, 132), (219, 133), (226, 146), (220, 187), (219, 200), (227, 142), (220, 173), (229, 142), (219, 131), (219, 195), (221, 126), (220, 136), (222, 159), (221, 188), (227, 207), (219, 167), (219, 193), (220, 131), (228, 158), (219, 198), (221, 139), (219, 211), (221, 177), (223, 189), (219, 156), (222, 144), (222, 184), (228, 200), (219, 174), (229, 197), (220, 184), (222, 133), (222, 171), (219, 152), (222, 147), (222, 197), (219, 132), (223, 167), (221, 163), (223, 126), (227, 199), (229, 168), (229, 188), (221, 165), (222, 139), (219, 217), (222, 161), (225, 143), (219, 187), (221, 202), (223, 141), (222, 134), (220, 204), (221, 209), (220, 191), (221, 183), (223, 137), (223, 188), (221, 219), (222, 140), (223, 146), (219, 142), (222, 219), (229, 134), (221, 168), (227, 145), (222, 199), (227, 211), (220, 201), (220, 217), (221, 190), (221, 216), (223, 204), (221, 186), (227, 178), (222, 125), (221, 122), (220, 190), (227, 196), (222, 141), (220, 145), (229, 215)] \
@@ -149,7 +232,7 @@ class SourceScan(ScanBase):
                + [(30, 285) , (4, 205) , (2, 145) , (28, 246) , (28, 89) , (6, 370) , (10, 441), (8,269), (20,208),(18,295), (8,296), (26,199)  ] \
                + [(240, 181), (241, 412), (240, 390), (240, 305)] \
                + [(358, 412), (303, 37), (229, 282)] \
-               + [(419, 143), (425, 193)] \
+               + [(419, 143), (425, 193), (450,0), (0,0)] \
                 :
              self.chip.masks['enable'][col,row] = False
 
@@ -162,7 +245,7 @@ class SourceScan(ScanBase):
         # W8R13 pixels that fire even when disabled
         # For these ones, we disable the readout of the whole double-column
         reg_values = [0xffff] * 16
-        for col in [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335]: #on chip w8r24
+        for col in [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335, 450]: #on chip w8r24
         #for col in [511]:
             dcol = col // 2
             reg_values[dcol//16] &= ~(1 << (dcol % 16))

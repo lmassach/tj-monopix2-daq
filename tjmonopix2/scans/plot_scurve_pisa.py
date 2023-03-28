@@ -198,10 +198,10 @@ def main(input_file, overwrite=False):
                     f'{", ..." if len(crazy_list) > mi else ""}'
                     f"\nTotal = {len(crazy_list)} pixels ({len(crazy_list)/row_n/col_n:.1%})"
                 ), (0.5, 0.5), ha='center', va='center')
-            print(f"Crazy pixels (n = {len(crazy_list)})")
-            print("\n".join(f"({a}, {b}) = {float(c):.0f}" for (a, b), c in zip(
-                crazy_list, n_crazy_hits[tuple(x for x in crazy_indices)])))
-            print("[" + ", ".join(str((a, b)) for a, b in crazy_list) + "]")
+            # print(f"Crazy pixels (n = {len(crazy_list)})")
+            # print("\n".join(f"({a}, {b}) = {float(c):.0f}" for (a, b), c in zip(
+            #     crazy_list, n_crazy_hits[tuple(x for x in crazy_indices)])))
+            # print("[" + ", ".join(str((a, b)) for a, b in crazy_list) + "]")
         else:
             plt.annotate("No crazy pixel found.", (0.5, 0.5), ha='center', va='center')
         plt.gca().set_axis_off()
@@ -237,8 +237,12 @@ def main(input_file, overwrite=False):
         +        [(217, 150), (214, 151), (213, 151), (218, 155), (213, 121), (213, 122), (214, 121), (217, 122), (218, 123)] \
         +        [(219, 120), (222, 120), (219, 117)] \
         +        [(0, 50), (0, 100), (0,127), (0,130), (0,131), (0,132), (0,133), (0,140)] \
-        +          [(240, 390), (240, 181)]\
+        +        [(240, 390), (240, 181), (50,306), (50,221), (50,500),(50,501),(50,502)]\
+        +        [(50,503),(50,504),(50,505),(50,506),(50,507),(50,508),(50,509),(50,510),(50,511)]\
+        +        [(300,110),(300,500)]\
         :
+            #     [(300,110),(300,118),(300,120),(300,200),(300,300),(300,400),(300,500)]\
+            #+        [(300,110),(300,111),(300,112),(300,113),(300,114),(300,115),(300,116),(300,117),(300,118),(300,120),]\
                 #+        [(1, 50), (1, 100), (1,127), (1,130), (1,131), (1,132), (1,133)] \
                #+        [(1, 140), (2, 142), (1, 152), (1, 173), (1, 210)] \
             if not (col_start <= col < col_stop and row_start <= row < row_stop):
@@ -248,12 +252,42 @@ def main(input_file, overwrite=False):
         plt.suptitle(f"S-Curve of specific pixels")
         plt.xlabel("Injected charge [DAC]")
         plt.ylabel("Occupancy")
-        plt.ylim(0, 1.1)
-        plt.xlim(-5, 60)
+        plt.ylim(0, 2.0)
+        plt.xlim(0, 40)
         plt.grid()
         plt.legend(ncol=2)
         set_integer_ticks(plt.gca().xaxis)
         pdf.savefig(); plt.clf()
+
+        # Compute the threshold for each pixel as the weighted average
+        # of the injected charge, where the weights are given by the
+        # occupancy such that occu = 0.5 has weight 1, occu = 0,1 have
+        # weight 0, and anything in between is linearly interpolated
+        # Assuming the shape is an erf, this estimator is consistent
+        w = np.maximum(0, 0.5 - np.abs(occupancy - 0.5))
+        threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
+        #print("Pixels with THR  < 1")
+        #for col, row in zip(*np.nonzero(threshold_DAC < 1)):
+        #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+        # print("Pixels with 1 < THR < 25")
+        # for col, row in zip(*np.nonzero((1 < threshold_DAC) & (threshold_DAC < 25))):
+        #     print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+        print("THR for selected pixels pixels")
+        for col, row in [(300,110),(300,500)]\
+        :
+            if not (col_start <= col < col_stop and row_start <= row < row_stop):
+                continue
+            print(f"    ({col:3d}, {row:3d}), THR = {threshold_DAC[col-col_start,row-row_start]}")
+#            print(f"    (300,110), THR = {threshold_DAC[300-col_start,110]}")
+#            print(f"    (300,500), THR = {threshold_DAC[300,500]}")
+        print("Pixels with THR > 70")
+        for col, row in zip(*np.nonzero(threshold_DAC > 70)):
+             print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+         #print("First 10 pixels with 34 < THR < 36")
+         #for i, (col, row) in enumerate(zip(*np.nonzero((34 < threshold_DAC) & (threshold_DAC < 36)))):
+         #    if i >= 100:
+         #        break
+         #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
 
         # ToT vs injected charge as 2D histogram
         for (fc, lc, name), hist in zip(chain([(0, 511, 'All FEs')], FRONTENDS), tot_hist):
@@ -267,6 +301,7 @@ def main(input_file, overwrite=False):
             plt.xlabel("Injected charge [DAC]")
             plt.ylabel("ToT [25 ns]")
             plt.ylim(0,128)
+            plt.xlim(0,160)
             plt.grid(axis='both',)
             set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
             cb = integer_ticks_colorbar()
@@ -310,8 +345,10 @@ def main(input_file, overwrite=False):
             print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
 
         # Threshold hist
-        m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
-        m2 = int(min(charge_dac_range[1], threshold_DAC.max() + 2))
+        # m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
+        # m2 = int(min(charge_dac_range[1], threshold_DAC.max() + 2))
+        m1=0
+        m2=35
         for i, (fc, lc, name) in enumerate(FRONTENDS):
             if fc >= col_stop or lc < col_start:
                 continue
@@ -328,12 +365,14 @@ def main(input_file, overwrite=False):
         set_integer_ticks(plt.gca().yaxis)
         plt.legend()
         plt.grid(axis='y')
+        plt.grid(axis='x')
         plt.yscale('log')
         pdf.savefig(); plt.clf()
 
+
         # Threshold map
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=25, vmax=40,
+        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=5, vmax=25,
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Threshold map")
@@ -362,12 +401,16 @@ def main(input_file, overwrite=False):
         plt.ylabel("Pixels / bin")
         set_integer_ticks(plt.gca().yaxis)
         plt.grid(axis='y')
+        plt.grid(axis='x')
+        plt.yscale('log')
         plt.legend()
         pdf.savefig(); plt.clf()
 
+
+
         # Noise map
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], noise_DAC.transpose(),
+        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], noise_DAC.transpose(),vmin=0, vmax=8,
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Noise (width of s-curve slope) map")
