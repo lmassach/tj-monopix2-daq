@@ -4,36 +4,22 @@
 # SiLab, Institute of Physics, University of Bonn
 # ------------------------------------------------------------
 #
-
-import time
-
 import tables as tb
-import numpy as np
 
 from tjmonopix2.analysis import analysis
-from tjmonopix2.scans.shift_and_inject import get_scan_loop_mask_steps, shift_and_inject
 from tjmonopix2.system.scan_base import ScanBase
-from tqdm import tqdm
 
 scan_configuration = {
-    'start_column': 300,  # 213
-    'stop_column': 301,  # 223
-    'start_row': 0,  # 120
-    'stop_row': 512,  # 220
+    # Pixels to inject: only pixels whose column AND row are selected are injected
+    'inj_columns': [230],
+    'inj_rows': [0, 512],
 
     'n_injections': 100,
-    'VCAL_HIGH': 40,
-    'VCAL_LOW_start': 40,  #defalut 139
-    'VCAL_LOW_stop': 0,
-    'VCAL_LOW_step': -1,
-
-#    'n_injections': 2000,
-#    'VCAL_HIGH': 140,
-#    'VCAL_LOW_start': 40,  #defalut 139
-#    'VCAL_LOW_stop': 140,
-#    'VCAL_LOW_step': +20,
+    'VCAL_HIGH': 140,
+    'VCAL_LOW': 0,
 
     'reset_bcid': True,  # Reset BCID counter before every injection
+    'inj_pulse_start_delay': 1,  # Delay between BCID reset and inj pulse in 320 MHz clock cycles (there is also an offset of about 80 cycles)
     #load_tdac_from': None,  # Optional h5 file to load the TDAC values from
 
     # file produced w/o BCID
@@ -130,6 +116,12 @@ scan_configuration = {
     # chipW8R13 File produced w BCID reset target=25 ITHR=64 ICASN=80 settings psub pwell=-6V cols=224-448 rows=0-512
     'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-03-25/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
 }
+
+# Also save start and stop columns in case some plotting script uses them
+scan_configuration['start_column'] = min(scan_configuration['inj_columns'], default=0)
+scan_configuration['stop_column'] = max(scan_configuration['inj_columns'], default=0) + 1
+scan_configuration['start_row'] = min(scan_configuration['inj_rows'], default=0)
+scan_configuration['stop_row'] = max(scan_configuration['inj_rows'], default=0) + 1
 
 register_overrides = {
     #ITHR': 30,  # Default 64
@@ -228,18 +220,19 @@ register_overrides = {
 }
 
 
-class ThresholdScan(ScanBase):
-    scan_id = 'threshold_scan'
+class BCIDDelayStudy(ScanBase):
+    scan_id = 'bcid_delay_scan'
 
-    def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, load_tdac_from=None, **_):
+    def _configure(self, inj_columns=[], inj_rows=[], load_tdac_from=None, **_):
         # Setting the enable mask to False is equivalent to setting tdac to 0 = 0b000
         # This prevents the discriminator from firing, but we are not sure whether it disables the analog FE or not
         self.chip.masks['enable'][:,:] = False
         self.chip.masks['injection'][:,:] = False
-        self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
-        self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
-        # TDAC=4 for threshold tuning 0b100
-        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 4  # TDAC=4 (default)
+        for c in inj_columns:
+            for r in inj_rows:
+                self.chip.masks['enable'][c,r] = True
+                self.chip.masks['injection'][c,r] = True
+                self.chip.masks['tdac'][c,r] = 4  # TDAC=4 (default)
         # self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b110  # TDAC=6
         # self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 7
         # self.chip.masks['tdac'][220:222,159] = 1
@@ -256,12 +249,11 @@ class ThresholdScan(ScanBase):
         if load_tdac_from:
             with tb.open_file(load_tdac_from) as f:
                 file_tdac = f.root.configuration_out.chip.masks.tdac[:]
-                file_tdac = file_tdac[start_column:stop_column, start_row:stop_row]
-                # Do not replace TDAC values with zeros from the file, use the default for those pixels
-                self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = \
-                    np.where(
-                        file_tdac != 0, file_tdac,
-                        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row])
+                for c in inj_columns:
+                    for r in inj_rows:
+                        # Do not replace TDAC values with zeros from the file, use the default for those pixels
+                        if file_tdac[c,r] != 0:
+                            self.chip.masks['tdac'][c,r] = file_tdac[c,r]
 
         #self.chip.masks['tdac'][213,213] = 6  # mask applied
         #self.chip.masks['tdac'][1,140] = 1 # masked
@@ -335,24 +327,17 @@ class ThresholdScan(ScanBase):
 
         self.chip.registers["SEL_PULSE_EXT_CONF"].write(0)
 
-    def _scan(self, n_injections=100, VCAL_HIGH=80, VCAL_LOW_start=80, VCAL_LOW_stop=40, VCAL_LOW_step=-1, reset_bcid=False, **_):
+    def _scan(self, n_injections=100, VCAL_HIGH=80, VCAL_LOW=0, reset_bcid=False, inj_pulse_start_delay=1, **_):
         """
         Injects charges from VCAL_LOW_START to VCAL_LOW_STOP in steps of VCAL_LOW_STEP while keeping VCAL_HIGH constant.
         """
 
         self.chip.registers["VH"].write(VCAL_HIGH)
-        vcal_low_range = range(VCAL_LOW_start, VCAL_LOW_stop, VCAL_LOW_step)
+        self.chip.registers["VL"].write(VCAL_LOW)
 
-        pbar = tqdm(total=get_scan_loop_mask_steps(self) * len(vcal_low_range), unit=' mask steps', smoothing=0, delay=0.1)
-        for scan_param_id, vcal_low in enumerate(vcal_low_range):
-            self.chip.registers["VL"].write(vcal_low)
+        with self.readout():
+            self.chip.inject(PulseStartCnfg=inj_pulse_start_delay, repetitions=n_injections, reset_bcid=reset_bcid)
 
-            self.store_scan_par_values(scan_param_id=scan_param_id, vcal_high=VCAL_HIGH, vcal_low=vcal_low)
-            with self.readout(scan_param_id=scan_param_id):
-                shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param_id, reset_bcid=reset_bcid)
-            self.update_pbar_with_word_rate(pbar)
-
-        pbar.close()
         self.log.success('Scan finished')
 
     def _analyze(self):
@@ -361,5 +346,5 @@ class ThresholdScan(ScanBase):
 
 
 if __name__ == "__main__":
-    with ThresholdScan(scan_config=scan_configuration, register_overrides=register_overrides) as scan:
+    with BCIDDelayStudy(scan_config=scan_configuration, register_overrides=register_overrides) as scan:
         scan.start()
