@@ -31,7 +31,7 @@ def s_curve(x, mu, sigma):
     return 0.5 + 0.5 * erf((x - mu) / np.sqrt(2) / sigma)
 
 
-def main(input_file, overwrite=False):
+def main(input_file, overwrite=False, no_fit=False):
     output_file = os.path.splitext(input_file)[0] + "_scurve.pdf"
     if os.path.isfile(output_file) and not overwrite:
         return
@@ -229,25 +229,106 @@ def main(input_file, overwrite=False):
             cb.set_label("Pixels / bin")
             pdf.savefig(); plt.clf()
 
+        # Compute the threshold for each pixel as the weighted average
+        # of the injected charge, where the weights are given by the
+        # occupancy such that occu = 0.5 has weight 1, occu = 0,1 have
+        # weight 0, and anything in between is linearly interpolated
+        # Assuming the shape is an erf, this estimator is consistent
+        w = np.maximum(0, 0.5 - np.abs(occupancy - 0.5))
+        threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
+        # Compute the noise (the width of the up-slope of the s-curve)
+        # as a variance with the weights above
+        noise_DAC = np.sqrt(average((occupancy_charges - np.expand_dims(threshold_DAC, -1))**2, axis=2, weights=w, invalid=0))
+       #print("Pixels with THR  < 1")
+        #for col, row in zip(*np.nonzero(threshold_DAC < 1)):
+        #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+        # print("Pixels with 1 < THR < 25")
+        # for col, row in zip(*np.nonzero((1 < threshold_DAC) & (threshold_DAC < 25))):
+        #     print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+        print("THR for selected pixels pixels with weighted average")
+        for col, row in [(300,110),(300,500)]\
+        :
+            if not (col_start <= col < col_stop and row_start <= row < row_stop):
+                continue
+            print(f"    ({col:3d}, {row:3d}), THR = {threshold_DAC[col-col_start,row-row_start]:.2f}, noise = {noise_DAC[col-col_start,row-row_start]:.2f}")
+        print("Pixels with THR > 70")
+        for col, row in zip(*np.nonzero(threshold_DAC > 70)):
+             print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]:.2f}")
+         #print("First 10 pixels with 34 < THR < 36")
+         #for i, (col, row) in enumerate(zip(*np.nonzero((34 < threshold_DAC) & (threshold_DAC < 36)))):
+         #    if i >= 100:
+         #        break
+         #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+
+        charge_dac_np = np.array(charge_dac_values)
+        if not no_fit:
+            # Compute the threshold and noise for each pixels by fitting
+            # each s-curve with an error function
+            threshold_DAC = np.zeros((col_n, row_n))
+            noise_DAC = np.zeros((col_n, row_n))
+            for c in tqdm(range(col_n), unit='col', desc='fit', delay=2):
+                for r in range(row_n):
+                    o = np.clip(occupancy[c,r], 0, 1)
+                    if not (np.any(o == 0) and np.any(o == 1)):
+                        continue
+                    thr = charge_dac_np[np.argmin(np.abs(o - 0.5))]
+                    try:
+                        popt, pcov = curve_fit(s_curve, charge_dac_np, o, p0=(thr, 1))
+                    except RuntimeError:
+                        popt = np.full(2, np.nan)
+                        pcov = np.full((2, 2), np.nan)
+                    if not np.all(np.isfinite(popt)) or not np.all(np.isfinite(pcov)):
+                        print("Fit failed:", c + col_start, r + row_start, o)
+                        continue
+                    threshold_DAC[c,r], noise_DAC[c,r] = popt
+
+            #print("Pixels with THR  < 1")
+            #for col, row in zip(*np.nonzero(threshold_DAC < 1)):
+            #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+            # print("Pixels with 1 < THR < 25")
+            # for col, row in zip(*np.nonzero((1 < threshold_DAC) & (threshold_DAC < 25))):
+            #     print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+            print("THR for selected pixels pixels with fit")
+            for col, row in [(300,110),(300,500)]\
+            :
+                if not (col_start <= col < col_stop and row_start <= row < row_stop):
+                    continue
+                print(f"    ({col:3d}, {row:3d}), THR = {threshold_DAC[col-col_start,row-row_start]:.2f}, noise = {noise_DAC[col-col_start,row-row_start]:.2f}")
+            print("Pixels with THR > 70")
+            for col, row in zip(*np.nonzero(threshold_DAC > 70)):
+                print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]:.2f}")
+            #print("First 10 pixels with 34 < THR < 36")
+            #for i, (col, row) in enumerate(zip(*np.nonzero((34 < threshold_DAC) & (threshold_DAC < 36)))):
+            #    if i >= 100:
+            #        break
+            #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+
         # S-Curve for specific pixels
 #        for col, row in [(219, 161), (219, 160), (220, 160), (221, 160), (220, 159), (221, 159) ,(222,188) , (219,192), (218,155), (216,117), (222,180), (222,170),(221,136),(221,205),(221,174)]:
         # for col, row in [(221, 160),(222,188) , (222,180), (222,170),(221,205),(221,174), (218,155), (218,150), (219,192), (219,180) , (213,213)]:
-        for col, row in [(140,132),(132,133),(132,200),(192,4), (192,20),(192,100),(192,200),(193,4), (193,100) ] \
-        +        [(193,200),(10,255), (8,447), (36,123), (41,462) , (180, 127), (190, 120), (181, 164), (210, 165),(213, 213)] \
-        +        [(217, 150), (214, 151), (213, 151), (218, 155), (213, 121), (213, 122), (214, 121), (217, 122), (218, 123)] \
-        +        [(219, 120), (222, 120), (219, 117)] \
-        +        [(0, 50), (0, 100), (0,127), (0,130), (0,131), (0,132), (0,133), (0,140)] \
-        +        [(240, 390), (240, 181), (50,306), (50,221), (50,500),(50,501),(50,502)]\
-        +        [(50,503),(50,504),(50,505),(50,506),(50,507),(50,508),(50,509),(50,510),(50,511)]\
-        +        [(300,110),(300,500)]\
-        :
-            #     [(300,110),(300,118),(300,120),(300,200),(300,300),(300,400),(300,500)]\
+        i2 = 0
+        for i, (col, row) in enumerate([(140,132),(132,133),(132,200),(192,4), (192,20),(192,100),(192,200),(193,4), (193,100) ]
+        +        [(193,200),(10,255), (8,447), (36,123), (41,462) , (180, 127), (190, 120), (181, 164), (210, 165),(213, 213)]
+        +        [(217, 150), (214, 151), (213, 151), (218, 155), (213, 121), (213, 122), (214, 121), (217, 122), (218, 123)]
+        +        [(219, 120), (222, 120), (219, 117)]
+        +        [(0, 50), (0, 100), (0,127), (0,130), (0,131), (0,132), (0,133), (0,140)]
+        +        [(240, 390), (240, 181), (50,306), (50,221), (50,500),(50,501),(50,502)]
+        +        [(50,503),(50,504),(50,505),(50,506),(50,507),(50,508),(50,509),(50,510),(50,511)]
+        +        [(300,110),(300,500)]
+        # +       [(300,110),(300,118),(300,120),(300,200),(300,300),(300,400),(300,500)]\
             #+        [(300,110),(300,111),(300,112),(300,113),(300,114),(300,115),(300,116),(300,117),(300,118),(300,120),]\
                 #+        [(1, 50), (1, 100), (1,127), (1,130), (1,131), (1,132), (1,133)] \
                #+        [(1, 140), (2, 142), (1, 152), (1, 173), (1, 210)] \
+        ):
             if not (col_start <= col < col_stop and row_start <= row < row_stop):
                 continue
-            plt.plot(charge_dac_values, occupancy[col-col_start,row-row_start,:], '.-', label=str((col, row)))
+            i2 = (i2 + 1) % len(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+            # plt.plot(charge_dac_values, occupancy[col-col_start,row-row_start,:], f'C{i2}.-', label=str((col, row)))
+            if no_fit:
+                plt.plot(charge_dac_values, occupancy[col-col_start,row-row_start,:], f'C{i2}.-', label=str((col, row)))
+            else:
+                plt.plot(charge_dac_values, occupancy[col-col_start,row-row_start,:], f'C{i2}.', label=str((col, row)))
+                plt.plot(charge_dac_np, s_curve(charge_dac_np, threshold_DAC[col-col_start,row-row_start], noise_DAC[col-col_start,row-row_start]), f'C{i2}-')
         plt.title(subtitle)
         plt.suptitle(f"S-Curve of specific pixels")
         plt.xlabel("Injected charge [DAC]")
@@ -258,36 +339,6 @@ def main(input_file, overwrite=False):
         plt.legend(ncol=2)
         set_integer_ticks(plt.gca().xaxis)
         pdf.savefig(); plt.clf()
-
-        # Compute the threshold for each pixel as the weighted average
-        # of the injected charge, where the weights are given by the
-        # occupancy such that occu = 0.5 has weight 1, occu = 0,1 have
-        # weight 0, and anything in between is linearly interpolated
-        # Assuming the shape is an erf, this estimator is consistent
-        w = np.maximum(0, 0.5 - np.abs(occupancy - 0.5))
-        threshold_DAC = average(occupancy_charges, axis=2, weights=w, invalid=0)
-        #print("Pixels with THR  < 1")
-        #for col, row in zip(*np.nonzero(threshold_DAC < 1)):
-        #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
-        # print("Pixels with 1 < THR < 25")
-        # for col, row in zip(*np.nonzero((1 < threshold_DAC) & (threshold_DAC < 25))):
-        #     print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
-        print("THR for selected pixels pixels")
-        for col, row in [(300,110),(300,500)]\
-        :
-            if not (col_start <= col < col_stop and row_start <= row < row_stop):
-                continue
-            print(f"    ({col:3d}, {row:3d}), THR = {threshold_DAC[col-col_start,row-row_start]}")
-#            print(f"    (300,110), THR = {threshold_DAC[300-col_start,110]}")
-#            print(f"    (300,500), THR = {threshold_DAC[300,500]}")
-        print("Pixels with THR > 70")
-        for col, row in zip(*np.nonzero(threshold_DAC > 70)):
-             print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
-         #print("First 10 pixels with 34 < THR < 36")
-         #for i, (col, row) in enumerate(zip(*np.nonzero((34 < threshold_DAC) & (threshold_DAC < 36)))):
-         #    if i >= 100:
-         #        break
-         #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
 
         # ToT vs injected charge as 2D histogram
         for (fc, lc, name), hist in zip(chain([(0, 511, 'All FEs')], FRONTENDS), tot_hist):
@@ -308,41 +359,20 @@ def main(input_file, overwrite=False):
             cb.set_label("Hits / bin")
             pdf.savefig(); plt.clf()
 
-        # Compute the threshold and noise for each pixels by fitting
-        # each s-curve with an error function
-        threshold_DAC = np.zeros((col_n, row_n))
-        noise_DAC = np.zeros((col_n, row_n))
-        charge_dac_np = np.array(charge_dac_values)
-        for c in tqdm(range(col_n), unit='col', desc='fit', delay=2):
-            for r in range(row_n):
-                o = np.clip(occupancy[c,r], 0, 1)
-                if not (np.any(o == 0) and np.any(o == 1)):
-                    continue
-                thr = charge_dac_np[np.argmin(np.abs(o - 0.5))]
-                try:
-                    popt, pcov = curve_fit(s_curve, charge_dac_np, o, p0=(thr, 1))
-                except RuntimeError:
-                    popt = np.full(2, np.nan)
-                    pcov = np.full((2, 2), np.nan)
-                if not np.all(np.isfinite(popt)) or not np.all(np.isfinite(pcov)):
-                    print("Fit failed:", c + col_start, r + row_start, o)
-                    continue
-                threshold_DAC[c,r], noise_DAC[c,r] = popt
-
         #print("Pixels with THR  < 1")
         #for col, row in zip(*np.nonzero(threshold_DAC < 1)):
         #    print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
-        print("Pixels with 1 < THR < 25")
-        for col, row in zip(*np.nonzero((1 < threshold_DAC) & (threshold_DAC < 25))):
-            print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
-        print("Pixels with THR > 50")
-        for col, row in zip(*np.nonzero(threshold_DAC > 50)):
-            print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
-        print("First 10 pixels with 34 < THR < 36")
-        for i, (col, row) in enumerate(zip(*np.nonzero((34 < threshold_DAC) & (threshold_DAC < 36)))):
-            if i >= 100:
-                break
-            print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+        # print("Pixels with 1 < THR < 25")
+        # for col, row in zip(*np.nonzero((1 < threshold_DAC) & (threshold_DAC < 25))):
+        #     print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+        # print("Pixels with THR > 50")
+        # for col, row in zip(*np.nonzero(threshold_DAC > 50)):
+        #     print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
+        # print("First 10 pixels with 34 < THR < 36")
+        # for i, (col, row) in enumerate(zip(*np.nonzero((34 < threshold_DAC) & (threshold_DAC < 36)))):
+        #     if i >= 100:
+        #         break
+        #     print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
 
         # Threshold hist
         # m1 = int(max(charge_dac_range[0], threshold_DAC.min() - 2))
@@ -478,6 +508,8 @@ if __name__ == "__main__":
              " If not given, looks in output_data/module_0/chip_0.")
     parser.add_argument("-f", "--overwrite", action="store_true",
                         help="Overwrite plots when already present.")
+    parser.add_argument("--no-fit", action="store_true",
+                        help="Compute thresholds and noise with weighted average instead of erf fit.")
     args = parser.parse_args()
 
     files = []
@@ -490,6 +522,6 @@ if __name__ == "__main__":
 
     for fp in tqdm(files, unit="file"):
         try:
-            main(fp, args.overwrite)
+            main(fp, args.overwrite, args.no_fit)
         except Exception:
             print(traceback.format_exc())

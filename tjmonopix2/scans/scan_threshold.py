@@ -18,12 +18,12 @@ from tqdm import tqdm
 scan_configuration = {
     'start_column': 300,  # 213
     'stop_column': 301,  # 223
-    'start_row': 0,  # 120
+    'start_row': 510,  # 120
     'stop_row': 512,  # 220
 
     'n_injections': 100,
-    'VCAL_HIGH': 40,
-    'VCAL_LOW_start': 40,  #defalut 139
+    'VCAL_HIGH': 140,
+    'VCAL_LOW_start': 1,  #defalut 139
     'VCAL_LOW_stop': 0,
     'VCAL_LOW_step': -1,
 
@@ -145,7 +145,7 @@ register_overrides = {
 
     # similar to Lars proposed tuning with target ~ 23 but in this chip seems ITHR=30
      'ITHR':64,  # Default 64
-     'IBIAS': 50,  # Default 50
+     'IBIAS': 100,  # Default 50
      'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
      'ICASN': 80,  # Lars proposed 54
      'VCASP': 93,  # Default 93
