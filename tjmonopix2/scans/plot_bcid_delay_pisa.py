@@ -2,9 +2,11 @@
 """Plots for hot_pixel_study."""
 import argparse
 import glob
+from itertools import chain
 import os
 import traceback
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 import numpy as np
 import tables as tb
@@ -35,198 +37,113 @@ def main(input_file, overwrite=False):
         with np.errstate(all='ignore'):
             tot = (hits['te'] - hits['le']) & 0x7f
 
-        # Print the first 10000 hits to a txt file with the same name as the output pdf
+        # Print the first 1000 hits to a txt file with the same name as the output pdf
         with open(os.path.splitext(output_file)[0] + ".txt", "w") as ofs:
             print("COL ROW  LE  TE   TOT   DeltaTS TS", file=ofs)
             prev_ts = 0
             nhits = 0
-            for h in hits[:10000]:
-                print(f"{h['col']:3d} {h['row']:3d} {h['le']:3d}  {h['te']:3d} {tot:3d} {h['timestamp']-prev_ts:7d} {h['timestamp']}")
+            n = min(len(hits), 1000)
+            for h, t in zip(hits[:n], tot[:n]):
+                print(f"{h['col']:3d} {h['row']:3d} {h['le']:3d}  {h['te']:3d} {t:3d} {h['timestamp']-prev_ts:7d} {h['timestamp']}", file=ofs)
                 prev_ts = h['timestamp']
                 nhits += 1
-            print("N hits = ", nhits)
+            print("N hits = ", nhits, file=ofs)
 
-
-        inj_col = int(cfg["configuration_in.scan.scan_config.inj_col"])
-        inj_row = int(cfg["configuration_in.scan.scan_config.inj_row"])
-
-        # Distinguish the hits from the injected pixel, and those from other pixels
-        inj_mask = (hits["col"] == inj_col) & (hits["row"] == inj_row)
-        print("Injected pixel:", (inj_col, inj_row))
-        print("Other pixels:", np.unique(hits[~inj_mask][["col", "row"]]))
-
-        TS_CLK = 40  # MHz  # Multiplying by 1.106 we get match between ΔTE and ΔTS: wrong/unsynchronized clocks?
-        if verbose:
-            print("\x1b[1mGreen = injected pixels\x1b[0m")
-            print("\x1b[1mRow  Col   LE   TE  ΔLE  ΔTE   ΔTS[25ns]  TS[25ns]\x1b[0m")
-            pu, pl, pt = np.nan, np.nan, np.nan
-            for cnt, (r, c, l, t, u, i) in enumerate(zip(hits["row"], hits["col"], hits["le"], hits["te"], hits["timestamp"], inj_mask)):
-                if cnt > 200:
-                    break
-                u = (u - hits["timestamp"][0]) / TS_CLK / 25e-3
-                color = "\x1b[32m" if i else ""
-                reset = "\x1b[0m" if i else ""
-                with np.errstate(all='ignore'):
-                    print(f"{color}{r:3d}  {c:3d}  {l:3d}  {t:3d}  {(l-pl)%128:3.0f}  {(t-pt)%128:3.0f}  {u-pu:10.0f}  {u:.0f}{reset}")
-                pu, pl, pt = u, l, t
-
-        # Compute the le, te and timestamp of the previous hit on the injected pixel
-        inj_ts = np.full(hits.shape, np.nan, np.float64)  # Timestamp of the last injection for each hit
-        inj_le = np.full(hits.shape, np.nan, np.float64)  # LE of the last injection for each hit
-        inj_te = np.full(hits.shape, np.nan, np.float64)  # TE of the last injection for each hit
-        first_hit_after_inj_mask = np.zeros(inj_mask.shape, bool)
-        unique_timestamps = np.unique(hits["timestamp"])
-        unique_timestamps.sort()
-        last_ts, last_le, last_te, prev_ts_was_inj = np.nan, np.nan, np.nan, False
-        for ts in unique_timestamps:
-            ts_mask = hits["timestamp"] == ts
-            if np.count_nonzero(ts_mask & inj_mask):
-                inj_hit_idx = np.argmax(ts_mask & inj_mask)
-                last_ts, last_le, last_te = hits[inj_hit_idx][["timestamp", "le", "te"]]
-                prev_ts_was_inj = True
-            else:
-                if prev_ts_was_inj:
-                    first_hit_after_inj_mask[ts_mask] = True
-                prev_ts_was_inj = False
-            inj_ts[ts_mask] = last_ts
-            inj_le[ts_mask] = last_le
-            inj_te[ts_mask] = last_te
-        del last_ts, last_te, last_le, ts_mask
-
-        # Time from last injection
+        # Event filters (event = multiple hits w same timestamp)
+        timestamps, timestamp_idxs, timestamp_hits = np.unique(hits['timestamp'], return_inverse=True, return_counts=True)
+        # Find the LE of one pixel in row 0 for each timestamp
+        timestamp_row0_le = np.full_like(timestamps, np.nan, np.float32)
+        timestamp_row0_col = np.full_like(timestamps, -1, np.int16)
+        mask_row0 = hits['row'] == 0
+        for i, ts in enumerate(timestamps):
+            mask_ts = hits['timestamp'] == ts
+            mask_cut = tot > 10  # ADDITIONAL CUT ON ROW 0 HIT
+            mask = mask_ts & mask_row0 & mask_cut
+            if np.count_nonzero(mask):
+                idx = np.argmax(mask)
+                timestamp_row0_le[i] = hits['le'][idx]
+                timestamp_row0_col[i] = hits['col'][idx]
+        # Compute the difference LE_row0 - LE_rowi for each hit
         with np.errstate(all='ignore'):
-            delta_ts = hits["timestamp"] - inj_ts
-            delta_le = (hits["le"] - inj_le) % 128
-            delta_le_te = (hits["le"] - inj_te) % 128
-            delta_te = (hits["te"] - inj_te) % 128
+            tmp = (timestamp_row0_le[timestamp_idxs] - hits['le']) % 128
+            le_diff_to_row0 = np.where(tmp > 63, tmp - 128, tmp)
+            del tmp
 
-        # Histograms
-        for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
-            with np.errstate(all='ignore'):
-                plt.hist((hits[mask]["te"] - hits[mask]["le"]) & 0x7f,
-                         bins=128, range=[-0.5, 127.5], histtype='step', label=name)
-        plt.title("ToT distribution")
-        plt.xlabel("ToT [25 ns]")
-        plt.ylabel("Hits / bin")
-        plt.grid()
-        plt.legend()
-        pdf.savefig(); plt.clf()
-
-        plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.hist(np.diff(hits[inj_mask]["timestamp"]) / TS_CLK, bins=700, range=[0, 280], histtype='step')
-        plt.title("$\\Delta$timestamp between injections")
-        plt.xlabel("$\\Delta$timestamp [μs]")
-        plt.ylabel("Hits / bin")
-        plt.grid()
-        # Axis above with time in 25 ns units
-        xl, xu = plt.xlim()
-        ax2 = plt.gca().twiny()
-        ax2.set_xlim(xl * 40, xu * 40)
-        ax2.set_xlabel("$\\Delta$timestamp [25 ns]")
-        pdf.savefig(); plt.clf()
-
-        plt.axes((0.125, 0.11, 0.775, 0.72))
-        for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask & (~inj_mask), "Other pixels, 1st readout cycle after inj."),
-                           ((~inj_mask) & (~first_hit_after_inj_mask), "Other pixels, remaining hits")]:
-            plt.hist(delta_ts[mask] / TS_CLK, bins=700, range=[0, 280], histtype='step', label=name)
-        plt.title("$\\Delta$timestamp from last injection")
-        plt.xlabel("$\\Delta$timestamp [μs]")
-        plt.xlim(-0.025, delta_ts[delta_ts / TS_CLK <= 280].max() / TS_CLK + 0.025)
-        plt.ylabel("Hits / bin")
-        plt.grid()
-        plt.legend()
-        # Axis above with time in 25 ns units
-        xl, xu = plt.xlim()
-        ax2 = plt.gca().twiny()
-        ax2.set_xlim(xl * 40, xu * 40)
-        ax2.set_xlabel("$\\Delta$timestamp [25 ns]")
-        pdf.savefig(); plt.clf()
-
-        plt.axes((0.125, 0.11, 0.775, 0.72))
-        for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask & (~inj_mask), "Other pixels, 1st readout cycle after inj."),
-                           ((~inj_mask) & (~first_hit_after_inj_mask), "Other pixels, remaining hits")]:
-            plt.hist(delta_ts[mask] / TS_CLK, bins=80, range=[-0.0125, 2-0.0125], histtype='step', label=name)
-        plt.title("$\\Delta$timestamp from last injection")
-        plt.xlabel("$\\Delta$timestamp [μs]")
-        plt.xlim(-0.025, delta_ts[delta_ts / TS_CLK <= 2-0.0125].max() / TS_CLK + 0.025)
-        plt.ylabel("Hits / bin")
-        plt.grid()
-        plt.legend()
-        # Axis above with time in 25 ns units
-        xl, xu = plt.xlim()
-        ax2 = plt.gca().twiny()
-        ax2.set_xlim(xl * 40, xu * 40)
-        ax2.set_xlabel("$\\Delta$timestamp [25 ns]")
-        pdf.savefig(); plt.clf()
-
-        for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask & (~inj_mask), "Other pixels, 1st readout cycle after inj."),
-                           ((~inj_mask) & (~first_hit_after_inj_mask), "Other pixels, remaining hits")]:
-            plt.hist(delta_le[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
-        plt.title("$\\Delta$LE from last injection")
-        plt.xlabel("$\\Delta$LE [25 ns]")
-        plt.xlim(delta_le[np.isfinite(delta_le)].min() - 1, delta_le[np.isfinite(delta_le)].max() + 1)
-        plt.ylabel("Hits / bin")
-        plt.grid()
-        plt.legend()
-        pdf.savefig(); plt.clf()
-
-        for mask, name in [(inj_mask, "Injected pixel"),
-                           (first_hit_after_inj_mask & (~inj_mask), "Other pixels, 1st readout cycle after inj."),
-                           ((~inj_mask) & (~first_hit_after_inj_mask), "Other pixels, remaining hits")]:
-            plt.hist(delta_le_te[mask], bins=128, range=[-0.5, 127.5], histtype='step', label=name)
-        plt.title("LE - TE of last injection")
-        plt.xlabel("LE - TE$_{inj}$ [25 ns]")
-        plt.xlim(delta_le_te[np.isfinite(delta_le_te)].min() - 1, delta_le_te[np.isfinite(delta_le_te)].max() + 1)
-        plt.ylabel("Hits / bin")
-        plt.grid()
-        plt.legend()
-        pdf.savefig(); plt.clf()
-
-        h = np.zeros(128)
-        for mask, name in [(inj_mask, "Injected pixel"), (~inj_mask, "Other pixels")]:
-            with np.errstate(all='ignore'):
-                ht, _, _ = plt.hist(
-                    (hits["le"][1:][mask[1:]] - hits["te"][:-1][mask[1:]]) & 0x7f,
-                    bins=128, range=[-0.5, 127.5], histtype='step', label=name)
-                h += ht
-        plt.title("LE - TE of previous hit")
-        plt.xlabel("LE$_{i}$ - TE$_{i-1}$ [25 ns]")
-        nz = np.nonzero(h > 0)[0]
-        plt.xlim(nz[0] - 1, nz[-1] + 1)
-        plt.ylabel("Hits / bin")
-        plt.grid()
-        plt.legend()
-        pdf.savefig()
-        # Zoom
-        plt.xlim(-1, 75)
-        plt.ylim(0, (h[:60].max() + 1) * 1.2)
-        pdf.savefig()
-        # Zoom
-        plt.xlim(29, 50)
-        plt.ylim(0, (h[29:50].max() + 1) * 1.2)
-        pdf.savefig()
-        # Zoom
-        plt.xlim(10, 25)
-        plt.ylim(0, (h[10:25].max() + 1) * 1.2)
-        pdf.savefig(); plt.clf()
-
-        # Frames ("photos" of pixels that fire with the same timestamp, i.e. read at the same time)
-        for i, ts in enumerate(unique_timestamps):
-            if i > 15:
+        # Plots
+        count = 0
+        for i, ts in chain([(-1, None)], enumerate(timestamps)):
+            if i != -1 and np.isnan(timestamp_row0_le[i]):  # Skip events w/o good hits in the row 0
+                continue
+            if count > 10:  # Only plot the first 10 events
                 break
-            mask = hits["timestamp"] == ts
-            mh = hits[mask]
-            plt.hist2d(mh["col"], mh["row"], bins=[512, 512], range=[[0, 512], [0, 512]], rasterized=True)
-            plt.xlabel("Column")
-            plt.ylabel("Row")
-            plt.xlim(200, 230)
-            plt.ylim(120, 220)
+            count += 1
+
+            if i == -1:
+                mask_ts = np.full_like(hits, True, bool)
+                subtitle = f"All {len(timestamps)} events ({len(hits):.4g} hits)"
+            else:
+                mask_ts = hits['timestamp'] == ts
+                subtitle = f"Event {i} (TS = {ts}, {timestamp_hits[i]:.4g} hits)"
+
+            ts_hits = hits[mask_ts]
+            ts_tot = tot[mask_ts]
+
+            # 2D histogram of LE vs row
+            plt.hist2d(ts_hits['row'], ts_hits['le'], bins=[512, 128], range=[[0, 512], [0, 128]], rasterized=True)
+            plt.xlabel("Row")
+            plt.ylabel("LE [25 ns]")
+            plt.suptitle("LE vs row")
+            plt.title(subtitle)
             plt.colorbar().set_label("Number of hits")
-            plt.title(f"Frame {i} @ timestamp = {(ts-unique_timestamps.min())/16} [25 ns]")
             pdf.savefig(); plt.clf()
+
+            # 2D histogram of ToT vs row
+            plt.hist2d(ts_hits['row'], ts_tot, bins=[512, 128], range=[[0, 512], [0, 128]], rasterized=True)
+            plt.xlabel("Row")
+            plt.ylabel("ToT [25 ns]")
+            plt.suptitle("ToT vs row")
+            plt.title(subtitle)
+            plt.colorbar().set_label("Number of hits")
+            pdf.savefig(); plt.clf()
+
+            # 2D histogram of LE vs ToT
+            plt.hist2d(ts_tot, ts_hits['le'], bins=[128, 128], range=[[0, 128], [0, 128]], rasterized=True)
+            plt.xlabel("ToT [25 ns]")
+            plt.ylabel("LE [25 ns]")
+            plt.suptitle("LE vs ToT")
+            plt.title(subtitle)
+            plt.colorbar().set_label("Number of hits")
+            pdf.savefig(); plt.clf()
+
+            # Delay map
+            # Delay = BCID delay - compensation with IDEL
+            # Computed as mean of (LE_row0-LE)*25ns for each pixel
+            if i == -1:
+                mask_cut = tot > 10  # ADDITIONAL CUT ON ROW i HITS
+                mask = np.isfinite(le_diff_to_row0) & mask_cut
+                hn, edges512, _ = np.histogram2d(
+                    hits[mask]['col'], hits[mask]['row'], bins=[512, 512], range=[[0, 512], [0, 512]],
+                    weights=le_diff_to_row0[mask])
+                hd, _, _ = np.histogram2d(
+                    hits[mask]['col'], hits[mask]['row'], bins=[512, 512], range=[[0, 512], [0, 512]])
+                with np.errstate(all='ignore'):
+                    delay_map = 25 * hn / hd
+                m1 = np.nanquantile(delay_map.reshape(-1), 0.16)
+                m2 = np.nanquantile(delay_map.reshape(-1), 0.84)
+                ml = m2 - m1
+                print(m1, m2)
+                m1 -= 0.1 * ml
+                m2 += 0.1 * ml
+                print(m1, m2)
+                plt.pcolormesh(edges512, edges512, delay_map.transpose(),
+                               vmin=m1, vmax=m2, rasterized=True)
+                plt.xlabel("Col")
+                plt.ylabel("Row")
+                plt.suptitle("Delay map - " + subtitle)
+                plt.colorbar().set_label("Delay [25 ns]")
+                set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+                frontend_names_on_top()
+                pdf.savefig(); plt.clf()
 
         plt.close()
 
