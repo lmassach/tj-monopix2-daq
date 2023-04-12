@@ -34,28 +34,20 @@ def main(input_file, overwrite=False):
             return
 
         hits = f.root.Dut[:]
+
+        # Event filters (event = multiple hits w same timestamp)
+        timestamps, timestamp_idxs, timestamp_hits = np.unique(hits['timestamp'], return_inverse=True, return_counts=True)
+        mask = timestamp_hits > 10  # Filter out noise events
+        hits = hits[mask[timestamp_idxs]]
         with np.errstate(all='ignore'):
             tot = (hits['te'] - hits['le']) & 0x7f
 
-        # Print the first 1000 hits to a txt file with the same name as the output pdf
-        with open(os.path.splitext(output_file)[0] + ".txt", "w") as ofs:
-            print("COL ROW  LE  TE   TOT   DeltaTS TS", file=ofs)
-            prev_ts = 0
-            nhits = 0
-            n = min(len(hits), 1000)
-            for h, t in zip(hits[:n], tot[:n]):
-                print(f"{h['col']:3d} {h['row']:3d} {h['le']:3d}  {h['te']:3d} {t:3d} {h['timestamp']-prev_ts:7d} {h['timestamp']}", file=ofs)
-                prev_ts = h['timestamp']
-                nhits += 1
-            print("N hits = ", nhits, file=ofs)
-
-        # Event filters (event = multiple hits w same timestamp)
         timestamps, timestamp_idxs, timestamp_hits = np.unique(hits['timestamp'], return_inverse=True, return_counts=True)
         # Find the LE of one pixel in row 0 for each timestamp
         timestamp_row0_le = np.full_like(timestamps, np.nan, np.float32)
         timestamp_row0_col = np.full_like(timestamps, -1, np.int16)
         mask_row0 = hits['row'] == 0
-        for i, ts in enumerate(timestamps):
+        for i, ts in tqdm(enumerate(timestamps), total=len(timestamps), unit='event', delay=2):
             mask_ts = hits['timestamp'] == ts
             mask_cut = tot > 10  # ADDITIONAL CUT ON ROW 0 HIT
             mask = mask_ts & mask_row0 & mask_cut
@@ -68,6 +60,18 @@ def main(input_file, overwrite=False):
             tmp = (timestamp_row0_le[timestamp_idxs] - hits['le']) % 128
             le_diff_to_row0 = np.where(tmp > 63, tmp - 128, tmp)
             del tmp
+
+        # Print the first 1000 hits to a txt file with the same name as the output pdf
+        with open(os.path.splitext(output_file)[0] + ".txt", "w") as ofs:
+            print("COL ROW  LE  TE   TOT   DeltaTS TS", file=ofs)
+            prev_ts = 0
+            nhits = 0
+            n = min(len(hits), 1000)
+            for h, t in zip(hits[:n], tot[:n]):
+                print(f"{h['col']:3d} {h['row']:3d} {h['le']:3d}  {h['te']:3d} {t:3d} {h['timestamp']-prev_ts:7d} {h['timestamp']}", file=ofs)
+                prev_ts = h['timestamp']
+                nhits += 1
+            print("N hits = ", nhits, file=ofs)
 
         # Plots
         count = 0
@@ -131,10 +135,8 @@ def main(input_file, overwrite=False):
                 m1 = np.nanquantile(delay_map.reshape(-1), 0.16)
                 m2 = np.nanquantile(delay_map.reshape(-1), 0.84)
                 ml = m2 - m1
-                print(m1, m2)
                 m1 -= 0.1 * ml
                 m2 += 0.1 * ml
-                print(m1, m2)
                 plt.pcolormesh(edges512, edges512, delay_map.transpose(),
                                vmin=m1, vmax=m2, rasterized=True)
                 plt.xlabel("Col")
