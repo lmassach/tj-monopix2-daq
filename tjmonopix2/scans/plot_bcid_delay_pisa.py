@@ -12,7 +12,7 @@ from tqdm import tqdm
 from plot_utils_pisa import *
 
 
-def main(input_file, overwrite=False, verbose=False):
+def main(input_file, overwrite=False):
     output_file = os.path.splitext(input_file)[0] + "_delay.pdf"
     if os.path.isfile(output_file) and not overwrite:
         return
@@ -31,16 +31,21 @@ def main(input_file, overwrite=False, verbose=False):
             pdf.savefig(); plt.clf()
             return
 
-        hits = f.root.Dut[:10000]
-        print("COL ROW  LE  TE   TOT   DeltaTS TS")
-        prev_ts = 0
-        nhits = 0
-        for h in hits:
-            print(f"{h['col']:3d} {h['row']:3d} {h['le']:3d}  {h['te']:3d} {h['te']-h['le']:3d} {h['timestamp']-prev_ts:7d} {h['timestamp']}")
-            prev_ts = h['timestamp']
-            nhits += 1
-        print("N hits = ", nhits)
-        return
+        hits = f.root.Dut[:]
+        with np.errstate(all='ignore'):
+            tot = (hits['te'] - hits['le']) & 0x7f
+
+        # Print the first 10000 hits to a txt file with the same name as the output pdf
+        with open(os.path.splitext(output_file)[0] + ".txt", "w") as ofs:
+            print("COL ROW  LE  TE   TOT   DeltaTS TS", file=ofs)
+            prev_ts = 0
+            nhits = 0
+            for h in hits[:10000]:
+                print(f"{h['col']:3d} {h['row']:3d} {h['le']:3d}  {h['te']:3d} {tot:3d} {h['timestamp']-prev_ts:7d} {h['timestamp']}")
+                prev_ts = h['timestamp']
+                nhits += 1
+            print("N hits = ", nhits)
+
 
         inj_col = int(cfg["configuration_in.scan.scan_config.inj_col"])
         inj_row = int(cfg["configuration_in.scan.scan_config.inj_row"])
@@ -233,8 +238,6 @@ if __name__ == "__main__":
         help="The bcid_delay_scan_interpreted.h5 file(s). If not given, looks in output_data/module_0/chip_0.")
     parser.add_argument("-f", "--overwrite", action="store_true",
                         help="Overwrite plots when already present.")
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        help="Print a table with data from the first 100 hits.")
     args = parser.parse_args()
 
     files = []
@@ -247,6 +250,6 @@ if __name__ == "__main__":
 
     for fp in tqdm(files):
         try:
-            main(fp, args.overwrite, args.verbose)
+            main(fp, args.overwrite)
         except Exception:
             print(traceback.format_exc())
