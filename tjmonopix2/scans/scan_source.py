@@ -15,7 +15,7 @@ from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.analysis import analysis
 
 scan_configuration = {
-    'start_column': 224,
+    'start_column':224,
     'stop_column': 448,
     'start_row': 0,
     'stop_row': 512,
@@ -66,8 +66,8 @@ scan_configuration = {
     # chipW8R13 File produced w BCID reset target=25 ITHR=20 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230325_153148_local_threshold_tuning_interpreted.h5'
      # chipW8R13 File produced w BCID reset target=25 ITHR=64 ICASN=80 settings psub pwell=-6V cols=224-448 rows=0-512
-    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
- }
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-03-25/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
+}
 
 register_overrides = {
     # 'ITHR':10,  # Default 64
@@ -100,15 +100,27 @@ register_overrides = {
     #  "IDB": 100,  # Default 100
     #  'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
     #  'VCLIP': 255,  # Default 255
+    #  'ITHR':64,  # Default 64
+    #  'IBIAS': 100,  # Default 50
+    #  'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
+    #  'ICASN': 80,  # Lars proposed 54
+    #  'VCASP': 93,  # Default 93
+    #  "VCASC": 228,  # Lars proposed 150
+    #  "IDB": 50,  # Default 100
+    #  'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+    #  'VCLIP': 255,  # Default 255
+    #  'IDEL': 255,  # Default 88, BCID delay compensation (higher IDEL -> smaller compensation, applied to delay hit)
+
      'ITHR':64,  # Default 64
      'IBIAS': 50,  # Default 50
      'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
      'ICASN': 80,  # Lars proposed 54
      'VCASP': 93,  # Default 93
      "VCASC": 228,  # Lars proposed 150
-     "IDB": 50,  # Default 100
+     "IDB": 60,  # Default 100
      'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
      'VCLIP': 255,  # Default 255
+     'IDEL':255,
 
 
     # HV  settings
@@ -242,10 +254,32 @@ class SourceScan(ScanBase):
         #         :
         #     self.chip.masks['enable'][col,row] = False
 
+        # # W8R13 pixels that fire even when disabled
+        # # For these ones, we disable the readout of the whole double-column
+        # reg_values = [0xffff] * 16
+        # for col in [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335, 450]: #on chip w8r24
+        # #for col in [511]:
+        #     dcol = col // 2
+        #     reg_values[dcol//16] &= ~(1 << (dcol % 16))
+        # for i, v in enumerate(reg_values):
+        #     # EN_RO_CONF
+        #     self.chip._write_register(155+i, v)
+        #     # EN_BCID_CONF (to disable BCID distribution, use 0 instead of v)
+        #     # EN_BCID_CONF
+        #     self.chip._write_register(171+i, v)
+        #     # EN_RO_RST_CONF
+        #     self.chip._write_register(187+i, v)
+        #     # EN_FREEZE_CONF
+        #     self.chip._write_register(203+i, v)
+
         # W8R13 pixels that fire even when disabled
-        # For these ones, we disable the readout of the whole double-column
+        # # For these ones, we disable the readout of the whole double-column
+        #Disable readout for HV col during test with flash light
         reg_values = [0xffff] * 16
-        for col in [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335, 450]: #on chip w8r24
+        col_HV = list(range(448, 512))
+        col_bad = [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335, 450]
+        col_disabled = col_HV + col_bad
+        for col in col_disabled:
         #for col in [511]:
             dcol = col // 2
             reg_values[dcol//16] &= ~(1 << (dcol % 16))
@@ -253,17 +287,17 @@ class SourceScan(ScanBase):
             # EN_RO_CONF
             self.chip._write_register(155+i, v)
             # EN_BCID_CONF (to disable BCID distribution, use 0 instead of v)
-            # EN_BCID_CONF
             self.chip._write_register(171+i, v)
             # EN_RO_RST_CONF
             self.chip._write_register(187+i, v)
             # EN_FREEZE_CONF
             self.chip._write_register(203+i, v)
 
+
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
 
-        self.chip.registers["SEL_PULSE_EXT_CONF"].write(0)
+        #self.chip.registers["SEL_PULSE_EXT_CONF"].write(0)
 
         self.scan_registers = {}
         for r in self.register_overrides:
@@ -274,6 +308,26 @@ class SourceScan(ScanBase):
         self.daq.rx_channels['rx0']['DATA_DELAY'] = 14
 
     def _scan(self, scan_time=60, **_):
+        # Enable HITOR general output (active low)
+        self.chip.registers["SEL_PULSE_EXT_CONF"].write(0)
+            # Disable HITOR (active high) on all columns, all rows - needed to reset this for next step
+        for i in range(512//16):
+            self.chip._write_register(18+i, 0)
+            self.chip._write_register(50+i, 0)
+            # Enable HITOR (active high) on all columns, all rows
+            # for i in range(512//16):
+            #     self.chip._write_register(18+i, 0xffff)
+            #     self.chip._write_register(50+i, 0xffff)
+            # Enable HITOR (active high) on col 300 (18+ int 300/16=18+18 , 2**(300%16) and row 2 (50+2/16=50+0, 2**(2%16) )
+        for i in range(512//16):
+                #self.chip._write_register(18+i,  0xffff)
+                #self.chip._write_register(50+31, 0xffff)
+            self.chip._write_register(18+18, 2**(300%16))
+            self.chip._write_register(50+(509//16), 2**(509%16))
+            # # Enable HITOR (active high) on col 300 (18+ int 300/16=18+18 , 2**(300%16) and row 2 (50+2/16=50+0, 2**(2%16) )
+            # self.chip._write_register(18+18, 2**(300%16))
+            # self.chip._write_register(50, 2**(2%16))
+
         pbar = tqdm(total=int(scan_time), unit='s')
         now = time.time()
         end_time = now + scan_time

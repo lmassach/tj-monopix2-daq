@@ -18,14 +18,15 @@ from tqdm import tqdm
 scan_configuration = {
     'start_column': 300,  # 213
     'stop_column': 301,  # 223
-    'start_row': 510,  # 120
-    'stop_row': 512,  # 220
+    'start_row': 0,  # 120
+    'stop_row': 510,  # 220
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
-    'VCAL_LOW_start': 1,  #defalut 139
+    'VCAL_LOW_start': 140,  #defalut 139
     'VCAL_LOW_stop': 0,
     'VCAL_LOW_step': -1,
+    "CMOS_TX_EN_CONF": 1,
 
 #    'n_injections': 2000,
 #    'VCAL_HIGH': 140,
@@ -34,8 +35,10 @@ scan_configuration = {
 #    'VCAL_LOW_step': +20,
 
     'reset_bcid': True,  # Reset BCID counter before every injection
+    'inj_pulse_start_delay': 1,  # Delay between BCID reset and inj pulse in 320 MHz clock cycles (there is also an offset of about 80 cycles)
     #load_tdac_from': None,  # Optional h5 file to load the TDAC values from
 
+    #region LOAD TDAC
     # file produced w/o BCID
     #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning.h5",  # Optional h5 file to load the TDAC values from
 
@@ -123,6 +126,8 @@ scan_configuration = {
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230306_115601_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=30 HV TB settings psub pwell=0V HV+6V cols=481-512 HV normal rows=0-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230315_165211_local_threshold_tuning_interpreted.h5'
+    #endregion
+
     # chipW8R13 File produced w BCID reset target=27 ITHR=30 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230324_191453_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=25 ITHR=20 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
@@ -145,14 +150,16 @@ register_overrides = {
 
     # similar to Lars proposed tuning with target ~ 23 but in this chip seems ITHR=30
      'ITHR':64,  # Default 64
-     'IBIAS': 100,  # Default 50
+     'IBIAS': 50,  # Default 50
      'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
      'ICASN': 80,  # Lars proposed 54
      'VCASP': 93,  # Default 93
      "VCASC": 228,  # Lars proposed 150
-     "IDB": 50,  # Default 100
+     "IDB": 60,  # Default 100
      'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
      'VCLIP': 255,  # Default 255
+     'IDEL':255,
+
 
 
     # HV TB settings
@@ -201,6 +208,7 @@ register_overrides = {
     'ANAMONIN_SFP_L': 0b1000,
     # Enable hitor Enable HITOR general output (active low)
     'SEL_PULSE_EXT_CONF': 0,
+
 
     # set readout cycle timing as in TB/or as default in Pisa
     'FREEZE_START_CONF': 10,  # Default 1, TB 41
@@ -303,9 +311,30 @@ class ThresholdScan(ScanBase):
              self.chip.masks['enable'][col,row] = False
 
         # W8R13 pixels that fire even when disabled
-        # For these ones, we disable the readout of the whole double-column
+        # # For these ones, we disable the readout of the whole double-column
+        # reg_values = [0xffff] * 16
+        # for col in [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335, 450]:
+        # #for col in [511]:
+        #     dcol = col // 2
+        #     reg_values[dcol//16] &= ~(1 << (dcol % 16))
+        # for i, v in enumerate(reg_values):
+        #     # EN_RO_CONF
+        #     self.chip._write_register(155+i, v)
+        #     # EN_BCID_CONF (to disable BCID distribution, use 0 instead of v)
+        #     self.chip._write_register(171+i, v)
+        #     # EN_RO_RST_CONF
+        #     self.chip._write_register(187+i, v)
+        #     # EN_FREEZE_CONF
+        #     self.chip._write_register(203+i, v)
+
+        # W8R13 pixels that fire even when disabled
+        # # For these ones, we disable the readout of the whole double-column
+        #Disable readout for HV col during test with flash light
         reg_values = [0xffff] * 16
-        for col in [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335, 450]:
+        col_HV = list(range(448, 512))
+        col_bad = [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335, 450]
+        col_disabled = col_HV + col_bad
+        for col in col_disabled:
         #for col in [511]:
             dcol = col // 2
             reg_values[dcol//16] &= ~(1 << (dcol % 16))
@@ -335,7 +364,7 @@ class ThresholdScan(ScanBase):
 
         self.chip.registers["SEL_PULSE_EXT_CONF"].write(0)
 
-    def _scan(self, n_injections=100, VCAL_HIGH=80, VCAL_LOW_start=80, VCAL_LOW_stop=40, VCAL_LOW_step=-1, reset_bcid=False, **_):
+    def _scan(self, n_injections=100, VCAL_HIGH=80, VCAL_LOW_start=80, VCAL_LOW_stop=40, VCAL_LOW_step=-1, reset_bcid=False, inj_pulse_start_delay=1, **_):
         """
         Injects charges from VCAL_LOW_START to VCAL_LOW_STOP in steps of VCAL_LOW_STEP while keeping VCAL_HIGH constant.
         """
@@ -349,7 +378,7 @@ class ThresholdScan(ScanBase):
 
             self.store_scan_par_values(scan_param_id=scan_param_id, vcal_high=VCAL_HIGH, vcal_low=vcal_low)
             with self.readout(scan_param_id=scan_param_id):
-                shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param_id, reset_bcid=reset_bcid)
+                shift_and_inject(scan=self, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param_id, reset_bcid=reset_bcid, PulseStartCnfg=inj_pulse_start_delay)
             self.update_pbar_with_word_rate(pbar)
 
         pbar.close()
