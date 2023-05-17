@@ -26,6 +26,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
     tot1d_single_hits = [np.zeros(128) for _ in range(len(FRONTENDS))]
     tot2d = np.zeros((512, 512))
     counts2d16 = np.zeros((32, 32))
+    tot2d16 = np.zeros((32, 32))
     cfg = []
     tdac = []
     n_total_hits = 0
@@ -78,6 +79,12 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
                     hits["col"], hits["row"], bins=[32, 32], range=[[0, 512], [0, 512]])
                 counts2d16 += counts2d16_tmp
                 del counts2d16_tmp
+
+                tot2d16_tmp, _, _  = np.histogram2d(
+                    hits["col"], hits["row"], bins=[32, 32], range=[[0, 512], [0, 512]],
+                    weights=tot)
+                tot2d16 += tot2d16_tmp
+                del tot2d16_tmp
 
                 del hits, tot, fe_masks
 
@@ -294,7 +301,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
             pdf.savefig(); plt.clf()
         # print("Noisy")
 
-        # Source positioning
+        # Source positioning (16x16 pixels blocks histogram)
         m = np.quantile(counts2d16[counts2d16 > 0], 0.99) * 1.2 if np.any(counts2d > 0) else 1
         plt.pcolormesh(edges16, edges16, counts2d16.transpose(), vmin=0, vmax=m,
                        cmap=cmap, rasterized=True)  # Necessary for quick save and view in PDF
@@ -307,6 +314,20 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         frontend_names_on_top()
         pdf.savefig(); plt.clf()
         # print("Source")
+
+        # Coarse (16x16 pixel blocks) map of the average ToT
+        with np.errstate(all='ignore'):
+            totavg16 = tot2d16 / counts2d16
+        plt.pcolormesh(edges16, edges16, totavg16.transpose(),
+                       vmin=-0.5, vmax=60.5, rasterized=True)  # Necessary for quick save and view in PDF
+        plt.title("Average ToT map in 16x16 regions")
+        plt.xlabel("Col")
+        plt.ylabel("Row")
+        cb = plt.colorbar()
+        cb.set_label("ToT [25 ns]")
+        set_integer_ticks(plt.gca().xaxis, plt.gca().yaxis)
+        frontend_names_on_top()
+        pdf.savefig(); plt.clf()
 
         plt.close()
 
