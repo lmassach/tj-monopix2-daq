@@ -246,7 +246,7 @@ def main(input_file, overwrite=False, no_fit=False):
         # for col, row in zip(*np.nonzero((1 < threshold_DAC) & (threshold_DAC < 25))):
         #     print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
         print("THR for selected pixels pixels with weighted average")
-        for col, row in [(300,110),(300,500)]\
+        for col, row in [(300,509),(300,409),(300,309), (300,209), (300,109), (300,9), (300,2)]\
         :
             if not (col_start <= col < col_stop and row_start <= row < row_stop):
                 continue
@@ -289,7 +289,7 @@ def main(input_file, overwrite=False, no_fit=False):
             # for col, row in zip(*np.nonzero((1 < threshold_DAC) & (threshold_DAC < 25))):
             #     print(f"    ({col+col_start:3d}, {row+row_start:3d}), THR = {threshold_DAC[col,row]}")
             print("THR for selected pixels pixels with fit")
-            for col, row in [(300,110),(300,500)]\
+            for col, row in [(300,509),(300,409),(300,309), (300,209), (300,109), (300,9), (300,2)]\
             :
                 if not (col_start <= col < col_stop and row_start <= row < row_stop):
                     continue
@@ -316,7 +316,7 @@ def main(input_file, overwrite=False, no_fit=False):
         # +        [(240, 390), (240, 181), (50,306), (50,221), (50,500),(50,501),(50,502)]
         # +        [(50,503),(50,504),(50,505),(50,506),(50,507),(50,508),(50,509),(50,510),(50,511)]
         # +        [(300,110),(300,500)]
-            [(300,509), (300,2), (300,34), (300,68), (300,102), (300,136), (300, 170), (300,204), (300,238)]
+            [(300,509),(300,409),(300,309), (300,209), (300,109), (300,9),(300,2)]
         # +       [(300,110),(300,118),(300,120),(300,200),(300,300),(300,400),(300,500)]\
             #+        [(300,110),(300,111),(300,112),(300,113),(300,114),(300,115),(300,116),(300,117),(300,118),(300,120),]\
                 #+        [(1, 50), (1, 100), (1,127), (1,130), (1,131), (1,132), (1,133)] \
@@ -336,7 +336,7 @@ def main(input_file, overwrite=False, no_fit=False):
         plt.xlabel("Injected charge [DAC]")
         plt.ylabel("Occupancy")
         plt.ylim(0, 2.0)
-        plt.xlim(0, 140)
+        plt.xlim(0, 32)
         plt.grid()
         plt.legend(ncol=2)
         set_integer_ticks(plt.gca().xaxis)
@@ -404,7 +404,7 @@ def main(input_file, overwrite=False, no_fit=False):
 
         # Threshold map
         plt.axes((0.125, 0.11, 0.775, 0.72))
-        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=5, vmax=40,
+        plt.pcolormesh(occupancy_edges[0], occupancy_edges[1], threshold_DAC.transpose(), vmin=15, vmax=30,
                        rasterized=True)  # Necessary for quick save and view in PDF
         plt.title(subtitle)
         plt.suptitle("Threshold map")

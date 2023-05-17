@@ -217,7 +217,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
         with np.errstate(all='ignore'):
             totavg = tot2d / counts2d
         plt.pcolormesh(tot2d_edges, tot2d_edges, totavg.transpose(),
-                       vmin=15.5, vmax=60.5, rasterized=True)  # Necessary for quick save and view in PDF
+                       vmin=0.5, vmax=15.5, rasterized=True)  # Necessary for quick save and view in PDF
         plt.title("Average ToT map")
         plt.xlabel("Col")
         plt.ylabel("Row")
@@ -233,7 +233,7 @@ def main(input_files, overwrite=False, log_tot=False, output_file=None):
             if not np.any(counts2d[i:i1,j:j1]):
                 continue
             plt.pcolormesh(tot2d_edges[i:i1+1], tot2d_edges[j:j1+1], totavg[i:i1,j:j1].transpose(),
-                           vmin=15.5, vmax=60.5, rasterized=True)  # Necessary for quick save and view in PDF
+                           vmin=0.5, vmax=15.5, rasterized=True)  # Necessary for quick save and view in PDF
             plt.title("Average ToT map (subregion)")
             plt.xlabel("Col")
             plt.ylabel("Row")

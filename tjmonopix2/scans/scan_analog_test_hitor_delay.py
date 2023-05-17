@@ -7,6 +7,8 @@
 
 from tqdm import tqdm
 import time
+import tables as tb
+import numpy as np
 
 from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.scans.shift_and_inject import shift_and_inject, get_scan_loop_mask_steps
@@ -19,13 +21,28 @@ scan_configuration = {
     'stop_column': 301,
     'start_row': 0,
     'stop_row': 512,
+    'reset_bcid': True,  # Reset BCID counter before every injection
+    'inj_pulse_start_delay': 1,  # Delay between BCID reset and inj pulse in 320 MHz clock cycles (there is also an offset of about 80 cycles)
+
+    #load_tdac_from': None,  # Optional h5 file to load the TDAC values from
+
+
+
+    # chipW8R13 File produced w BCID reset target=27 ITHR=30 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230324_191453_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=25 ITHR=20 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230325_153148_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=25 ITHR=64 ICASN=80 settings psub pwell=-6V cols=224-448 rows=0-512
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-03-25/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
 }
 
 register_overrides = {
-    'n_injections' : 1,
+    'n_injections' : 10,
     "CMOS_TX_EN_CONF": 1,
     'VL': 1,
-    'VH': 140,
+    'VH':101,
+
+
     #'ITHR': 64,
     #'IBIAS': 50,
     #'VRESET': 143,
@@ -51,10 +68,12 @@ register_overrides = {
      'ICASN': 80,  # Lars proposed 54
      'VCASP': 93,  # Default 93
      "VCASC": 228,  # Lars proposed 150
-     "IDB": 50,  # Default 100
+     "IDB": 60,  # Default 100
      'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
      'VCLIP': 255,  # Default 255
      'IDEL': 255,
+
+
 
     # set readout cycle timing as in TB/or as default in Pisa
     'FREEZE_START_CONF': 10,  # Default 1, TB 41
@@ -63,6 +82,15 @@ register_overrides = {
     'LOAD_CONF': 30,  # Default 7, TB 119
     'FREEZE_STOP_CONF': 31,  # Default 8, TB 120
     'STOP_CONF': 31  # Default 8, TB 120}
+
+    # With the delayed FREEZE etc are cutting the occupancy to 50% in first rows 0-132
+    # because it takes longer to read everything than the injection period
+    # 'FREEZE_START_CONF': 40,  # Default 1, TB 41
+    # 'READ_START_CONF': 43,  # Default 3, TB 81
+    # 'READ_STOP_CONF': 45,  # Default 5, TB 85
+    # 'LOAD_CONF': 110,  # Default 7, TB 119
+    # 'FREEZE_STOP_CONF': 111,  # Default 8, TB 120
+    # 'STOP_CONF': 111  # Default 8, TB 120
 }
 
 registers = ['IBIAS', 'ICASN', 'IDB', 'ITUNE', 'ITHR', 'ICOMP', 'IDEL', 'VRESET', 'VCASP', 'VH', 'VL', 'VCLIP', 'VCASC', 'IRAM']
@@ -70,13 +98,24 @@ registers = ['IBIAS', 'ICASN', 'IDB', 'ITUNE', 'ITHR', 'ICOMP', 'IDEL', 'VRESET'
 class AnalogScan(ScanBase):
     scan_id = 'analog_scan'
 
-    def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, **_):
+    def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, load_tdac_from=None, **_):
         self.chip.masks['enable'][:,:] = False
         self.chip.masks['injection'][:,:] = False
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100
         #self.chip.masks['hitor'][0, 0] = True
+
+        # Load TDAC from h5 file (optional)
+        if load_tdac_from:
+            with tb.open_file(load_tdac_from) as f:
+                file_tdac = f.root.configuration_out.chip.masks.tdac[:]
+                file_tdac = file_tdac[start_column:stop_column, start_row:stop_row]
+                # Do not replace TDAC values with zeros from the file, use the default for those pixels
+                self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = \
+                    np.where(
+                        file_tdac != 0, file_tdac,
+                        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row])
 
         # # W8R13 pixels that fire even when disabled
         # # For these ones, we disable the readout of the whole double-column
@@ -97,12 +136,13 @@ class AnalogScan(ScanBase):
 
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
+        #self.daq.set_LEMO_MUX('LEMO_MUX_TX0', 1)
 
         for r in self.register_overrides:
             if r != 'n_injections':
                 self.chip.registers[r].write(self.register_overrides[r])
             #print("Write: ", r, " to ", self.register_overrides[r])
-
+            #print('n_injections in Analogscans',n_injections)
         # Enable hitor is in _scan()
 
         # Enable injection (active high) on all col and all row  // I think the inj is done only on pixel that have mask set to injection before (tested)
@@ -130,8 +170,11 @@ class AnalogScan(ScanBase):
 
         self.daq.rx_channels['rx0']['DATA_DELAY'] = 14
 
-    def _scan(self, n_injections=1, **_):
+
+
+    def _scan(self, n_injections=1, inj_pulse_start_delay=1, **_):
         n_injections=self.register_overrides.get("n_injections", 1)
+        #print('n_injections in scans',"n_injections")
 
         with self.readout(scan_param_id=0):
             # Enable HITOR general output (active low)
@@ -144,17 +187,18 @@ class AnalogScan(ScanBase):
             # for i in range(512//16):
             #     self.chip._write_register(18+i, 0xffff)
             #     self.chip._write_register(50+i, 0xffff)
-            # Enable HITOR (active high) on col 300 (18+ int 300/16=18+18 , 2**(300%16) and row 2 (50+2/16=50+0, 2**(2%16) )
+            # Enable HITOR (active high) on col 300 (18+ int 300//16=18+18 , 2**(300%16) and row 2 (50+2//16=50+0, 2**(2%16) )
+            # or row x (50+(x//16), 2**(x%16)
             for i in range(512//16):
-                #self.chip._write_register(18+i,  0xffff)
-                #self.chip._write_register(50+31, 0xffff)
-                self.chip._write_register(18+18, 2**(300%16))
+                # self.chip._write_register(18+i,  0xffff)
+                # self.chip._write_register(50+i, 0xffff)
+                self.chip._write_register(18+(300//16), 2**(300%16))
                 self.chip._write_register(50+(509//16), 2**(509%16))
             # # Enable HITOR (active high) on col 300 (18+ int 300/16=18+18 , 2**(300%16) and row 2 (50+2/16=50+0, 2**(2%16) )
             # self.chip._write_register(18+18, 2**(300%16))
             # self.chip._write_register(50, 2**(2%16))
 
-            self.chip.inject(PulseStartCnfg=1, PulseStopCnfg=1500, repetitions=n_injections, latency=1400, reset_bcid=True)
+            self.chip.inject(PulseStartCnfg=inj_pulse_start_delay, PulseStopCnfg=1500, repetitions=1000, latency=1400, reset_bcid=True)
 
         ret = {}
         for r in registers:

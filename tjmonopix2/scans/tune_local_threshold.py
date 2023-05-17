@@ -30,7 +30,7 @@ scan_configuration = {
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 30+24,
+    'VCAL_HIGH': 30+22,
 
     'bcid_reset': True,  # BCID reset before injection
     #'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
@@ -69,6 +69,17 @@ register_overrides = {
     # "VCASC": 228,  # Default 228
     # "IDB": 100,  # Default 100
     # 'ITUNE': 200,  # Default TB 53, 150 for lower THR tuning
+    # 'VCLIP': 255,  # Default 255
+
+    # around THR = 19 on col 300
+    # 'ITHR': 20,  # Default 64
+    # 'IBIAS': 100,  # Default 50
+    # 'VRESET': 110,  # Default 143, 110 for lower THR
+    # 'ICASN': 0,  # Default TB 0 , 150 for -3V , 200 for -6V
+    # 'VCASP': 93,  # Default 93
+    # "VCASC": 228,  # Default 228, lars proposed 150
+    # "IDB": 100,  # Default 100
+    # 'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
     # 'VCLIP': 255,  # Default 255
 
     # Lars proposed tuning with target ~ 23 but in this chip seems ITHR=30

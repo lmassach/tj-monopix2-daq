@@ -20,8 +20,8 @@ from tjmonopix2.analysis import online as oa
 
 
 scan_configuration = {
-    'start_column': 480, # 216
-    'stop_column': 512, #230
+    'start_column': 300, # 216
+    'stop_column': 301, #230
     'start_row': 0, #120
     'stop_row': 512, #220
 
@@ -29,9 +29,9 @@ scan_configuration = {
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 54,
+    'VCAL_HIGH': 30+23,
 
-    'bcid_reset': False,  # BCID reset before injection
+    'bcid_reset': True,  # BCID reset before injection
 
     # This setting does not have to be changed, it only allows (slightly) faster retuning
     # E.g.: gdac_value_bits = [3, 2, 1, 0] uses the 4th, 3rd, 2nd, and 1st GDAC value bit.
@@ -40,14 +40,24 @@ scan_configuration = {
 }
 
 register_overrides = {
-    'ITHR': 64,  # Default 64
-    'IBIAS': 50,  # Default 50
-    'VRESET': 110,  # Default 143
-    'ICASN': 0,  # Default 0
-    'VCASP': 93,  # Default 93
-    "VCASC": 228,  # Default 228
-    "IDB": 100,  # Default 100
-    'ITUNE': 150,  # Default 53
+    # 'ITHR': 64,  # Default 64
+    # 'IBIAS': 50,  # Default 50
+    # 'VRESET': 110,  # Default 143
+    # 'ICASN': 0,  # Default 0
+    # 'VCASP': 93,  # Default 93
+    # "VCASC": 228,  # Default 228
+    # "IDB": 100,  # Default 100
+    # 'ITUNE': 150,  # Default 53
+
+     'ITHR':64,  # Default 64
+     'IBIAS': 50,  # Default 50
+     'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
+     'ICASN': 80,  # Lars proposed 54
+     'VCASP': 93,  # Default 93
+     "VCASC": 228,  # Lars proposed 150
+     "IDB": 60,  # Default 100
+     'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+     'VCLIP': 255,  # Default 255
 
     # Enable VL and VH measurement and override
     # 'MON_EN_VH': 0,
@@ -57,6 +67,7 @@ register_overrides = {
     # Enable analog monitoring pixel
     'EN_PULSE_ANAMON_L': 1,
     'ANAMON_SFN_L': 0b0001,
+
     'ANAMON_SFP_L': 0b1000,
     'ANAMONIN_SFN1_L': 0b1000,
     'ANAMONIN_SFN2_L': 0b1000,
@@ -65,12 +76,19 @@ register_overrides = {
     'SEL_PULSE_EXT_CONF': 0,
 
     # set readout cycle timing as in TB
-    'FREEZE_START_CONF': 1,  # Default 1, TB 41
-    'READ_START_CONF': 3,  # Default 3, TB 81
-    'READ_STOP_CONF': 5,  # Default 5, TB 85
-    'LOAD_CONF': 7,  # Default 7, TB 119
-    'FREEZE_STOP_CONF': 8,  # Default 8, TB 120
-    'STOP_CONF': 8  # Default 8, TB 120
+    # 'FREEZE_START_CONF': 1,  # Default 1, TB 41
+    # 'READ_START_CONF': 3,  # Default 3, TB 81
+    # 'READ_STOP_CONF': 5,  # Default 5, TB 85
+    # 'LOAD_CONF': 7,  # Default 7, TB 119
+    # 'FREEZE_STOP_CONF': 8,  # Default 8, TB 120
+    # 'STOP_CONF': 8  # Default 8, TB 120
+    # set readout cycle timing as in TB/or as default in Pisa/or as in hot pixel study
+    'FREEZE_START_CONF': 10,  # Default 1, TB 41
+    'READ_START_CONF': 13,  # Default 3, TB 81
+    'READ_STOP_CONF': 15,  # Default 5, TB 85
+    'LOAD_CONF': 30,  # Default 7, TB 119
+    'FREEZE_STOP_CONF': 31,  # Default 8, TB 120
+    'STOP_CONF': 31  # Default 8, TB 120
 }
 
 class GDACTuning(ScanBase):
@@ -182,10 +200,13 @@ class GDACTuning(ScanBase):
 
         # Only check pixel that can respond
         sel_pixel = np.zeros(shape=(512, 512), dtype=bool)
-        sel_pixel[self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row] = True
+        sel_pixel[self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row] = \
+            (self.chip.masks['tdac'][self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row] != 0) \
+            & self.chip.masks['enable'][self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row]
 
         self.log.info('Searching optimal global threshold setting.')
-        self.data.pbar = tqdm(total=len(gdac_value_bits) * self.chip.masks.get_mask_steps() * 2, unit=' Mask steps', delay=0.1)
+        #self.data.pbar = tqdm(total=len(gdac_value_bits) * self.chip.masks.get_mask_steps() * 2, unit=' Mask steps', delay=0.1)
+        self.data.pbar = tqdm(total=(len(gdac_value_bits) + 1) * self.chip.masks.get_mask_steps(), unit=' Mask steps')
         for scan_param_id in range(len(gdac_value_bits)):
             # Set the GDAC bit in all flavours
             gdac_bit = gdac_value_bits[scan_param_id]
@@ -194,6 +215,7 @@ class GDACTuning(ScanBase):
 
             # Calculate new GDAC from hit occupancies: median pixel hits < n_injections / 2 --> decrease global threshold
             hist_occ = self.get_occupancy(scan_param_id, n_injections, bcid_reset)
+            # mean_occ = np.mean(hist_occ[sel_pixel])
             mean_occ = np.median(hist_occ[sel_pixel])
 
             # Binary search does not have to converge to best solution for not exact matches
@@ -215,18 +237,22 @@ class GDACTuning(ScanBase):
                 gdac_new = np.bitwise_and(gdac_new, ~(1 << gdac_bit))  # decrease threshold
 
         else:  # Loop finished but last bit = 0 still has to be checked
-            self.data.pbar.close()
+            #self.data.pbar.close()
             scan_param_id += 1
             gdac_new = np.bitwise_and(gdac_new, ~(1 << gdac_bit))
             # Do not check if setting was already used before, safe time of one iteration
             if best_gdacs != gdac_new:
                 write_gdac_registers(gdac_new)
                 hist_occ = self.get_occupancy(scan_param_id, n_injections, bcid_reset)
+                # mean_occ = np.mean(hist_occ[:][sel_pixel[:]])
                 mean_occ = np.median(hist_occ[:][sel_pixel[:]])
                 best_gdacs, best_gdac_offset = update_best_gdacs(mean_occ, best_gdacs, best_gdac_offset)
         self.data.pbar.close()
 
-        self.log.success('Optimal ICASN value is {0:1.0f} with mean occupancy {1:1.0f}'.format(best_gdacs, int(mean_occ)))
+        # Median is better than the mean because it will be much less sensitive to hot/noisy pixels
+        # whose occupancy can go much above 100%
+        # self.log.success('Optimal ICASN value is {0:1.0f} with mean occupancy {1:1.0f}'.format(best_gdacs, int(mean_occ)))
+        self.log.success('Optimal ICASN value is {0:1.0f} with median occupancy {1:1.0f}'.format(best_gdacs, int(mean_occ)))
 
         # Set final result
         self.data.best_gdacs = best_gdacs
@@ -239,7 +265,7 @@ class GDACTuning(ScanBase):
         # Inject target charge
         with self.readout(scan_param_id=scan_param_id, callback=self.analyze_data_online):
             shift_and_inject(scan=self, n_injections=n_injections, pbar=self.data.pbar, scan_param_id=scan_param_id, reset_bcid=bcid_reset)
-        self.update_pbar_with_word_rate(pbar)
+        #self.update_pbar_with_word_rate(pbar)
         # Get hit occupancy using online analysis
         occupancy = self.data.hist_occ.get()
 
