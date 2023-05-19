@@ -132,7 +132,7 @@ scan_configuration = {
     # chipW8R13 File produced w BCID reset target=25 ITHR=20 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230325_153148_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=25 ITHR=64 ICASN=80 settings psub pwell=-6V cols=224-448 rows=0-512
-    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-03-25/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-03-25/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=24 ITHR=20 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-04-29/chip_0/20230429_163747_local_threshold_tuning_interpreted.h5'
 }
@@ -165,7 +165,7 @@ register_overrides = {
      'ITHR':64,  # Default 64
      'IBIAS': 50,  # Default 50
      'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
-     'ICASN': 97,  # Lars proposed 54
+     'ICASN': 80,  # Lars proposed 54
      'VCASP': 93,  # Default 93
      "VCASC": 228,  # Lars proposed 150
      "IDB": 60,  # Default 100
