@@ -30,7 +30,7 @@ scan_configuration = {
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 30+22,
+    'VCAL_HIGH': 30+27,
 
     'bcid_reset': True,  # BCID reset before injection
     #'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
@@ -92,15 +92,26 @@ register_overrides = {
     #  "IDB": 100,  # Default 100
     #  'ITUNE': 175,  # Default TB 53, 150 for lower THR tuning
     #  'VCLIP': 255,  # Default 255
+    #  'ITHR':64,  # Default 64
+    #  'IBIAS': 50,  # Default 50
+    #  'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
+    #  'ICASN': 80,  # Lars proposed 54
+    #  'VCASP': 93,  # Default 93
+    #  "VCASC": 228,  # Lars proposed 150
+    #  "IDB": 60,  # Default 100
+    #  'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+    #  'VCLIP': 255,  # Default 255
+
      'ITHR':64,  # Default 64
-     'IBIAS': 50,  # Default 50
+     'IBIAS': 100,  # Default 50
      'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
-     'ICASN': 80,  # Lars proposed 54
+     'ICASN': 2,  # Lars proposed 54
      'VCASP': 93,  # Default 93
      "VCASC": 228,  # Lars proposed 150
-     "IDB": 60,  # Default 100
-     'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+     "IDB": 100,  # Default 100
+     'ITUNE': 170,  # Default TB 53, 150 for lower THR tuning
      'VCLIP': 255,  # Default 255
+     'IDEL':255,
 
     # HV TB settings
     # 'ITHR':64,  # Default 64

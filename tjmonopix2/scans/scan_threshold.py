@@ -25,7 +25,7 @@ scan_configuration = {
     'VCAL_HIGH': 140,
     'VCAL_LOW_start': 139,  #defalut 139
     'VCAL_LOW_stop': 0,
-    'VCAL_LOW_step': -1,
+    'VCAL_LOW_step': -10,
 
 #    'n_injections': 2000,
 #    'VCAL_HIGH': 140,
@@ -132,9 +132,11 @@ scan_configuration = {
     # chipW8R13 File produced w BCID reset target=25 ITHR=20 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230325_153148_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=25 ITHR=64 ICASN=80 settings psub pwell=-6V cols=224-448 rows=0-512
-    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-03-25/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-03-25/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=24 ITHR=20 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-04-29/chip_0/20230429_163747_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=27 ITHR=64 IBIAS=100 ICASN=2 settings psub pwell=-6V cols=224-448 rows=0-512
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0-2023-05-24/chip_0/20230524_192643_local_threshold_tuning_interpreted.h5'
 }
 
 register_overrides = {
@@ -162,14 +164,25 @@ register_overrides = {
 
 
     # similar to Lars proposed tuning with target ~ 23 (but in this chip seems ITHR=30 with Lars register)
+    #  'ITHR':64,  # Default 64
+    #  'IBIAS': 100,  # Default 50
+    #  'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
+    #  'ICASN': 2,  # Lars proposed 54
+    #  'VCASP': 93,  # Default 93
+    #  "VCASC": 228,  # Lars proposed 150
+    #  "IDB": 100,  # Default 100
+    #  'ITUNE': 170,  # Default TB 53, 150 for lower THR tuning
+    #  'VCLIP': 255,  # Default 255
+    #  'IDEL':255,
+
      'ITHR':64,  # Default 64
-     'IBIAS': 50,  # Default 50
+     'IBIAS': 100,  # Default 50
      'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
-     'ICASN': 80,  # Lars proposed 54
+     'ICASN': 64,  # Lars proposed 54
      'VCASP': 93,  # Default 93
      "VCASC": 228,  # Lars proposed 150
-     "IDB": 60,  # Default 100
-     'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+     "IDB": 100,  # Default 100
+     'ITUNE': 170,  # Default TB 53, 150 for lower THR tuning
      'VCLIP': 255,  # Default 255
      'IDEL':255,
 
@@ -372,17 +385,17 @@ class ThresholdScan(ScanBase):
         # Enable HITOR (active high) on col 300 (18+ int 300//16=18+18 , 2**(300%16) and row 2 (50+2//16=50+0, 2**(2%16) )
         # or row x (50+(x//16), 2**(x%16)
         for i in range(512//16):
-            #self.chip._write_register(18+i,  0xffff)
-            #self.chip._write_register(50+i, 0xffff)
+            self.chip._write_register(18+i, 0xffff)
+            self.chip._write_register(50+i, 0xffff)
             #self.chip._write_register(18+17,  0xffff)
             #self.chip._write_register(18+18,  0xffff)
             #self.chip._write_register(18+19,  0xffff)
             #self.chip._write_register(18+20,  0xffff)
             #self.chip._write_register(50+i, 0xffff)
-            self.chip._write_register(18+(300//16), 2**(300%16))
+            #self.chip._write_register(18+(300//16), 2**(300%16))
             #self.chip._write_register(50+(270//16), 2**(270%16))
             #self.chip._write_register(50+(509//16), 2**(509%16))
-            self.chip._write_register(50+(39//16), 2**(39%16))
+            #self.chip._write_register(50+(39//16), 2**(39%16))
             #self.chip._write_register(50+(2//16), 2**(2%16))
             #self.chip._write_register(50+(9//16), 2**(9%16))
         # # Enable HITOR (active high) on col 300 (18+ int 300/16=18+18 , 2**(300%16) and row 2 (50+2/16=50+0, 2**(2%16) )

@@ -12,6 +12,7 @@
 import time
 
 import numpy as np
+import tables as tb
 from tqdm import tqdm
 
 from tjmonopix2.system.scan_base import ScanBase
@@ -29,14 +30,18 @@ scan_configuration = {
 
     # Target threshold
     'VCAL_LOW': 30,
-    'VCAL_HIGH': 30+23,
+    'VCAL_HIGH': 30+18,
 
     'bcid_reset': True,  # BCID reset before injection
+    # chipW8R13 File produced w BCID reset target=25 ITHR=64 ICASN=80 settings psub pwell=-6V cols=224-448 rows=0-512
+    # 'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-03-25/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5',
+    # chipW8R13 File produced w BCID reset target=27 ITHR=64 IBIAS=100 ICASN=2 settings psub pwell=-6V cols=224-448 rows=0-512
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0-2023-05-24/chip_0/20230524_192643_local_threshold_tuning_interpreted.h5',
 
     # This setting does not have to be changed, it only allows (slightly) faster retuning
     # E.g.: gdac_value_bits = [3, 2, 1, 0] uses the 4th, 3rd, 2nd, and 1st GDAC value bit.
     # GDAC is not an existing DAC, its value is mapped to ICASN currently
-    'gdac_value_bits': range(7, -1, -1)
+    'gdac_value_bits': range(6, -1, -1)
 }
 
 register_overrides = {
@@ -50,14 +55,16 @@ register_overrides = {
     # 'ITUNE': 150,  # Default 53
 
      'ITHR':64,  # Default 64
-     'IBIAS': 50,  # Default 50
+     'IBIAS': 100,  # Default 50
      'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
-     'ICASN': 80,  # Lars proposed 54
+     'ICASN': 0,  # Lars proposed 54
      'VCASP': 93,  # Default 93
      "VCASC": 228,  # Lars proposed 150
-     "IDB": 60,  # Default 100
-     'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+     "IDB": 100,  # Default 100
+     'ITUNE': 170,  # Default TB 53, 150 for lower THR tuning
      'VCLIP': 255,  # Default 255
+     'IDEL':255,
+
 
     # Enable VL and VH measurement and override
     # 'MON_EN_VH': 0,
@@ -94,7 +101,7 @@ register_overrides = {
 class GDACTuning(ScanBase):
     scan_id = 'global_threshold_tuning'
 
-    def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, VCAL_LOW=30, VCAL_HIGH=60, **_):
+    def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, VCAL_LOW=30, VCAL_HIGH=60, load_tdac_from=None,**_):
         '''
         Parameters
         ----------
@@ -120,6 +127,17 @@ class GDACTuning(ScanBase):
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100
 
+        # Load TDAC from h5 file (optional)
+        if load_tdac_from:
+            with tb.open_file(load_tdac_from) as f:
+                file_tdac = f.root.configuration_out.chip.masks.tdac[:]
+                file_tdac = file_tdac[start_column:stop_column, start_row:stop_row]
+                # Do not replace TDAC values with zeros from the file, use the default for those pixels
+                self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = \
+                    np.where(
+                        file_tdac != 0, file_tdac,
+                        self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row])
+
         # Disable W8R13 bad/broken columns (25, 160, 161, 224, 274, 383-414 included, 447) and pixels
         self.chip.masks['enable'][25,:] = False  # Many pixels don't fire
         self.chip.masks['enable'][160:162,:] = False  # Wrong/random ToT
@@ -133,6 +151,7 @@ class GDACTuning(ScanBase):
         self.chip.masks['enable'][219,161] = False # disable hottest pixel on chip
         self.chip.masks['enable'][214,88] = False
         self.chip.masks['enable'][215,101] = False
+        self.chip.masks['enable'][191:223,:] = False  # cols 191-223 are broken since Nov/dec very low THR
 
         # # Noisy/hot W8R13 pixels
         # for col, row in [(219, 161), (222, 188), (219, 192), (219, 129), (221, 125), (219, 190), (220, 205), (220, 144), (220, 168), (219, 179), (221, 136), (222, 186), (219, 163), (221, 205), (226, 135), (222, 174), (221, 199), (222, 185), (221, 203), (225, 181), (220, 123), (222, 142), (223, 143), (220, 154), (221, 149), (221, 179), (222, 120), (219, 125)] \
@@ -146,7 +165,13 @@ class GDACTuning(ScanBase):
         # W8R13 pixels that fire even when disabled
         # For these ones, we disable the readout of the whole double-column
         reg_values = [0xffff] * 16
-        for col in [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335]:
+        col_HV = list(range(448, 512))
+        col_bad = [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335, 450]
+        #col_bad_tmp = list(range(0, 255))
+        col_bad_tmp = list(range(0, 0))
+        #col_disabled = col_HV + col_bad + col_bad_tmp
+        col_disabled = col_HV + col_bad
+        for col in col_disabled:
             dcol = col // 2
             reg_values[dcol//16] &= ~(1 << (dcol % 16))
         for i, v in enumerate(reg_values):
@@ -162,6 +187,17 @@ class GDACTuning(ScanBase):
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
 
+        for r in self.register_overrides:
+            self.chip.registers[r].write(self.register_overrides[r])
+
+        # Only check pixel that can respond
+        self.sel_pixel = np.zeros(shape=(512, 512), dtype=bool)
+        self.sel_pixel[self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row] = \
+            (self.chip.masks['tdac'][self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row] != 0) \
+            & self.chip.masks['enable'][self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row]
+        print(np.count_nonzero(self.sel_pixel), "pixels are enabled")
+
+        print(f"Setting VH and VL to {VCAL_HIGH} and {VCAL_LOW}")
         self.chip.registers["VL"].write(VCAL_LOW)
         self.chip.registers["VH"].write(VCAL_HIGH)
 
@@ -189,6 +225,7 @@ class GDACTuning(ScanBase):
 
         def write_gdac_registers(gdac):
             ''' Write new GDAC setting for enabled flavors '''
+            print("Setting ICASN to ", repr(gdac))
             self.chip.registers['ICASN'].write(gdac)
             self.chip.configuration['registers']['ICASN'] = int(gdac)
 
@@ -197,12 +234,6 @@ class GDACTuning(ScanBase):
         # FIXME: keep track of chip config here, since it is not provided by bdaq53 yet?
         gdac_new = start_value
         best_gdacs = start_value
-
-        # Only check pixel that can respond
-        sel_pixel = np.zeros(shape=(512, 512), dtype=bool)
-        sel_pixel[self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row] = \
-            (self.chip.masks['tdac'][self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row] != 0) \
-            & self.chip.masks['enable'][self.data.start_column:self.data.stop_column, self.data.start_row:self.data.stop_row]
 
         self.log.info('Searching optimal global threshold setting.')
         #self.data.pbar = tqdm(total=len(gdac_value_bits) * self.chip.masks.get_mask_steps() * 2, unit=' Mask steps', delay=0.1)
@@ -215,8 +246,11 @@ class GDACTuning(ScanBase):
 
             # Calculate new GDAC from hit occupancies: median pixel hits < n_injections / 2 --> decrease global threshold
             hist_occ = self.get_occupancy(scan_param_id, n_injections, bcid_reset)
-            # mean_occ = np.mean(hist_occ[sel_pixel])
-            mean_occ = np.median(hist_occ[sel_pixel])
+            for i, b in enumerate(np.histogram(hist_occ[self.sel_pixel], bins=10, range=[0, n_injections])[0]):
+                print(f'\x1b[36m{i*n_injections/10:3.0f}', '█' * int(b * 40 / np.count_nonzero(self.sel_pixel)), end='\x1b[0m\n')
+            mean_occ = np.mean(hist_occ[self.sel_pixel & (hist_occ <= n_injections)])
+            # mean_occ = np.median(hist_occ[self.sel_pixel])
+            self.log.info(f'Mean Occ of {mean_occ:.2f} at ICASN = {gdac_new}')
 
             # Binary search does not have to converge to best solution for not exact matches
             # Thus keep track of best solution and set at the end if needed
@@ -230,7 +264,6 @@ class GDACTuning(ScanBase):
                 self.log.info('Found best result, skip remaining iterations')
                 break
 
-            self.log.info('Mean Occ of {} at ICASN = {}'.format(mean_occ, gdac_new))
 
             # Update GDACS from measured mean occupancy
             if not np.isnan(mean_occ) and mean_occ > n_injections / 2.:  # threshold too low
@@ -244,15 +277,19 @@ class GDACTuning(ScanBase):
             if best_gdacs != gdac_new:
                 write_gdac_registers(gdac_new)
                 hist_occ = self.get_occupancy(scan_param_id, n_injections, bcid_reset)
-                # mean_occ = np.mean(hist_occ[:][sel_pixel[:]])
-                mean_occ = np.median(hist_occ[:][sel_pixel[:]])
+                for i, b in enumerate(np.histogram(hist_occ[self.sel_pixel], bins=10, range=[0, n_injections])[0]):
+                    print(f'\x1b[36m{i*n_injections/10:3.0f}', '█' * int(b * 40 / np.count_nonzero(self.sel_pixel)), end='\x1b[0m\n')
+                mean_occ = np.mean(hist_occ[self.sel_pixel & (hist_occ <= n_injections)])
+                # mean_occ = np.median(hist_occ[self.sel_pixel])
+                self.log.info(f'Mean Occ of {mean_occ:.2f} at ICASN = {gdac_new}')
                 best_gdacs, best_gdac_offset = update_best_gdacs(mean_occ, best_gdacs, best_gdac_offset)
         self.data.pbar.close()
 
-        # Median is better than the mean because it will be much less sensitive to hot/noisy pixels
-        # whose occupancy can go much above 100%
-        # self.log.success('Optimal ICASN value is {0:1.0f} with mean occupancy {1:1.0f}'.format(best_gdacs, int(mean_occ)))
-        self.log.success('Optimal ICASN value is {0:1.0f} with median occupancy {1:1.0f}'.format(best_gdacs, int(mean_occ)))
+        # Mean is the correct thing to do, not median, because pixels will mostly fire 0% or 100% of the times unless
+        # they are exactly on-threshold (which is relatively unlikely), and the median will be naturally drawn to
+        # either 0 or 100. But if we do the mean, we must cut the noisy pixels away (those with occupancy > 100%).
+        self.log.success(f'Optimal ICASN value is {best_gdacs}')
+        # self.log.success('Optimal ICASN value is {0:1.0f} with median occupancy {1:1.0f}'.format(best_gdacs, int(mean_occ)))
 
         # Set final result
         self.data.best_gdacs = best_gdacs

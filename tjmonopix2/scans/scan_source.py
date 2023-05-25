@@ -17,10 +17,10 @@ from tjmonopix2.analysis import analysis
 scan_configuration = {
     'start_column':224,
     'stop_column': 448,
-    'start_row': 2,
+    'start_row': 0,
     'stop_row': 512,
 
-    'scan_time': 10,  # seconds
+    'scan_time': 120,  # seconds
     #'load_tdac_from': None,  # Optional h5 file to load the TDAC values from
     #'load_tdac_from': "/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2022-10-27/chip_0/20221027_175016_local_threshold_tuning_interpreted.h5",  # Optional h5 file to load the TDAC values from
     # file produced w/o BCID target THR=20 DAC and pwell/psub=-6V
@@ -66,9 +66,11 @@ scan_configuration = {
     # chipW8R13 File produced w BCID reset target=25 ITHR=20 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0/chip_0/20230325_153148_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=25 ITHR=64 ICASN=80 settings psub pwell=-6V cols=224-448 rows=0-512
-    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-03-25/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
+    #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-03-25/chip_0/20230325_182214_local_threshold_tuning_interpreted.h5'
     # chipW8R13 File produced w BCID reset target=24 ITHR=20 ICASN=0 settings psub pwell=-6V cols=224-448 rows=0-512
     #'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0_2023-04-29/chip_0/20230429_163747_local_threshold_tuning_interpreted.h5'
+    # chipW8R13 File produced w BCID reset target=27 ITHR=64 IBIAS=100 ICASN=2 settings psub pwell=-6V cols=224-448 rows=0-512
+    'load_tdac_from': '/home/labb2/tj-monopix2-daq/tjmonopix2/scans/output_data/module_0-2023-05-24/chip_0/20230524_192643_local_threshold_tuning_interpreted.h5'
 }
 
 register_overrides = {
@@ -124,16 +126,38 @@ register_overrides = {
     #  'VCLIP': 255,  # Default 255
     #  'IDEL': 255,  # Default 88, BCID delay compensation (higher IDEL -> smaller compensation, applied to delay hit)
 
+    #  'ITHR':64,  # Default 64
+    #  'IBIAS': 50,  # Default 50
+    #  'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
+    #  'ICASN': 80,  # Lars proposed 54
+    #  'VCASP': 93,  # Default 93
+    #  "VCASC": 228,  # Lars proposed 150
+    #  "IDB": 60,  # Default 100
+    #  'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+    #  'VCLIP': 255,  # Default 255
+    #  'IDEL':88,
+
+    #  'ITHR':64,  # Default 64
+    #  'IBIAS': 100,  # Default 50
+    #  'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
+    #  'ICASN': 10,  # Lars proposed 54
+    #  'VCASP': 93,  # Default 93
+    #  "VCASC": 228,  # Lars proposed 150
+    #  "IDB": 100,  # Default 100
+    #  'ITUNE': 170,  # Default TB 53, 150 for lower THR tuning
+    #  'VCLIP': 255,  # Default 255
+    #  'IDEL':70,
+
      'ITHR':64,  # Default 64
-     'IBIAS': 50,  # Default 50
+     'IBIAS': 100,  # Default 50
      'VRESET': 110,  # Default TB 143, 110 for lower THR, Lars dec proposal 128
-     'ICASN': 80,  # Lars proposed 54
+     'ICASN': 0,  # Lars proposed 54
      'VCASP': 93,  # Default 93
      "VCASC": 228,  # Lars proposed 150
-     "IDB": 60,  # Default 100
-     'ITUNE': 220,  # Default TB 53, 150 for lower THR tuning
+     "IDB": 100,  # Default 100
+     'ITUNE': 170,  # Default TB 53, 150 for lower THR tuning
      'VCLIP': 255,  # Default 255
-     'IDEL':20,
+     'IDEL':255,
 
 
 
@@ -283,8 +307,10 @@ class SourceScan(ScanBase):
         reg_values = [0xffff] * 16
         col_HV = list(range(448, 512))
         col_bad = [85, 109, 131, 145, 157, 163, 204, 205, 279, 282, 295, 327, 335, 450]
-        col_bad_tmp = list(range(0, 255))
-        col_disabled = col_HV + col_bad + col_bad_tmp
+        #col_bad_tmp = list(range(0, 255))
+        col_bad_tmp = list(range(0, 0))
+        #col_disabled = col_HV + col_bad + col_bad_tmp
+        col_disabled = col_HV + col_bad
         for col in col_disabled:
         #for col in [511]:
             dcol = col // 2
@@ -312,25 +338,24 @@ class SourceScan(ScanBase):
                 self.scan_registers[r] = self.register_overrides[r]
 
         # Disable HITOR (active high) on all columns, all rows - needed to reset this for next step
-        #for i in range(512//16):
-            #self.chip._write_register(18+i, 0)
-            #self.chip._write_register(50+i, 0)
+        for i in range(512//16):
+            self.chip._write_register(18+i, 0)
+            self.chip._write_register(50+i, 0)
             # Enable HITOR (active high) on all columns, all rows
             # for i in range(512//16):
             #     self.chip._write_register(18+i, 0xffff)
             #     self.chip._write_register(50+i, 0xffff)
-            # Enable HITOR (active high) on col 300 (18+ int 300/16=18+18 , 2**(300%16) and row 2 (50+2/16=50+0, 2**(2%16) )
-        #for i in range(512//16):
-            #self.chip._write_register(18+i,  0xffff)
-            #self.chip._write_register(50+i, 0xffff)
-        #for i in range(15):
-            # self.chip._write_register(18+17, 2**((300+i)%16))
-            # self.chip._write_register(18+18, 2**((300+i)%16))
-            # self.chip._write_register(18+19, 2**((300+i)%16))
-            # self.chip._write_register(50+(509//16), 2**((509+i)%16))
-            # # Enable HITOR (active high) on col 300 (18+ int 300/16=18+18 , 2**(300%16) and row 2 (50+2/16=50+0, 2**(2%16) )
-            # self.chip._write_register(18+(300//16), 2**(300%16))
-            # self.chip._write_register(50+(300//16), 2**(2%16))
+        # Enable HITOR (active high) on col 300 (18+ int 300/16=18+18 , 2**(300%16) and row 2 (50+2/16=50+0, 2**(2%16) )
+        for i in range(512//16):
+            # self.chip._write_register(18+i, 0xffff) # Cols
+            self.chip._write_register(50+i, 0xffff) # Rows
+        self.chip._write_register(18+17, 0xffff)
+        self.chip._write_register(18+18, 0xffff)
+        self.chip._write_register(18+19, 0xffff)
+        # self.chip._write_register(50+(509//16), 2**((509+i)%16))
+        # Enable HITOR (active high) on col 300 (18+ int 300/16=18+18 , 2**(300%16) and row 2 (50+2/16=50+0, 2**(2%16) )
+        #self.chip._write_register(18+(300//16), 2**(300%16))
+        #self.chip._write_register(50+(300//16), 2**(2%16))
             #self.chip._write_register(18+(300//16), 2**(300%16))
             #self.chip._write_register(50+(509//16), 2**(509%16))
 
@@ -339,17 +364,17 @@ class SourceScan(ScanBase):
     def _scan(self, scan_time=60, **_):
         # # Disable HITOR (active high) on all columns, all rows - needed to reset this for next step
         # for i in range(512//16):
-        #     self.chip._write_register(18+i, 0)
-        #     self.chip._write_register(50+i, 0)
+        #      self.chip._write_register(18+i, 0)
+        #      self.chip._write_register(50+i, 0)
         #     # Enable HITOR (active high) on all columns, all rows
         #     # for i in range(512//16):
         #     #     self.chip._write_register(18+i, 0xffff)
         #     #     self.chip._write_register(50+i, 0xffff)
         #     # Enable HITOR (active high) on col 300 (18+ int 300/16=18+18 , 2**(300%16) and row 2 (50+2/16=50+0, 2**(2%16) )
-        # for i in range(512//16):
+        #for i in range(512//16):
         # #for i in range(15):
-        #     self.chip._write_register(18+i,  0xffff)
-        #     self.chip._write_register(50+i, 0xffff)
+            #  self.chip._write_register(18+i,  0xffff)
+            #  self.chip._write_register(50+i, 0xffff)
         #     # self.chip._write_register(18+17, 2**((300+i)%16))
         #     # self.chip._write_register(18+18, 2**((300+i)%16))
         #     # self.chip._write_register(18+19, 2**((300+i)%16))
