@@ -270,7 +270,7 @@ class Analysis(object):
             # Set end_of_cluster function for shape and distance calculation
             self.clz.set_end_of_cluster_function(end_of_cluster_function)
 
-    def analyze_data(self):
+    def analyze_data(self, low_ram=False):
         self.log.info('Analyzing data...')
         self.chunk_offset = 0
         with tb.open_file(self.raw_data_file) as in_file:
@@ -306,7 +306,7 @@ class Analysis(object):
                     hist_cs_tot = np.zeros(shape=(256, ), dtype=np.uint32)
                     hist_cs_shape = np.zeros(shape=(300, ), dtype=np.int32)
 
-                interpreter = RawDataInterpreter(n_scan_params=n_scan_params, trigger_data_format=self.tlu_config['DATA_FORMAT'])
+                interpreter = RawDataInterpreter(n_scan_params=n_scan_params, trigger_data_format=self.tlu_config['DATA_FORMAT'], low_ram=low_ram)
                 self.last_chunk = False
                 pbar = tqdm(total=n_words, unit=' Words', unit_scale=True)
                 upd = 0
