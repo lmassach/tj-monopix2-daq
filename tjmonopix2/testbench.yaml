@@ -34,13 +34,13 @@ TDC:
   EN_INVERT_TRIGGER: 0 # Inverting trigger input, e.g. for using Test output from EUDET TLU
 
 hardware: # Setup-specific hardware settings
-  enable_NTC: False # Only enable if you know you have the correct resistors mounted on the BDAQ board!
+  enable_NTC: True # Only enable if you know you have the correct resistors mounted on the BDAQ board!
 
 calibration: # Setup-specific calibration constants
   bdaq_ntc: # Resistors on BDAQ board for NTC readout
-    R16: 412.00e3
-    R17: 13.00e3
-    R19: 6.04e3
+    R16: 39.02e3
+    R17: 20e3
+    R19: 7.95e3
 
 # Standard analysis settings
 # Scans might overwrite these settings if needed.
