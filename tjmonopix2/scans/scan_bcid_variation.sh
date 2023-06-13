@@ -5,7 +5,7 @@ F_BCID='40.0'
 export F_BCID=$F_BCID
 
 H5_DIR="output_data/module_0/chip_0"
-OUT_DIR="~/tmp/scan_bcid_variation_${F_BCID}MHz_long/data"
+OUT_DIR="script_output/scan_bcid_variation_${F_BCID}MHz_long/data"
 
 #put VRESET to 120 for more gaussian
 

@@ -11,13 +11,15 @@ from tjmonopix2.scans.shift_and_inject import (get_scan_loop_mask_steps,
 from tjmonopix2.system.scan_base import ScanBase
 from tqdm import tqdm
 
+import os
+IDEL = int(os.environ.get('IDEL', 80))
+
 scan_configuration = {
     'start_column': 0,
-    'stop_column': 224,
+    'stop_column': 8,
     'start_row': 0,
     'stop_row': 512,
 }
-
 
 class AnalogScan(ScanBase):
     scan_id = 'analog_scan'
@@ -31,10 +33,9 @@ class AnalogScan(ScanBase):
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
 
-        self.chip.registers["ITHR"].write(50)
-        self.chip.registers["IDB"].write(100)
+        self.chip.registers["IDEL"].write(IDEL)
 
-        self.chip.registers["VL"].write(30)
+        self.chip.registers["VL"].write(10)
         self.chip.registers["VH"].write(150)
         self.chip.registers["SEL_PULSE_EXT_CONF"].write(0)
 
