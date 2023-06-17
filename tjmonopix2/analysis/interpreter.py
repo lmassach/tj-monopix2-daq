@@ -19,6 +19,7 @@ class_spec = [
     ('hist_occ', numba.uint32[:, :, :]),
     ('hist_tot', numba.uint16[:, :, :, :]),
     ('hist_tdc', numba.uint32[:]),
+    ('hist_tdc_trigdist', numba.uint32[:]),
     ('n_triggers', numba.int64),
     ('n_tdc', numba.int64),
 ]
@@ -193,6 +194,7 @@ class RawDataInterpreter(object):
                 self.n_tdc += 1
 
                 self.hist_tdc[tdc_value] += 1
+                self.hist_tdc_trigdist[tdc_trigger_dist] += 1
 
                 # Prepare for next data block. Increase hit index
                 hit_index += 1
@@ -202,7 +204,7 @@ class RawDataInterpreter(object):
         return hit_data
 
     def get_histograms(self):
-        return self.hist_occ, self.hist_tot, self.hist_tdc
+        return self.hist_occ, self.hist_tot, self.hist_tdc, self.hist_tdc_trigdist
 
     def get_n_triggers(self):
         return self.n_triggers
@@ -218,6 +220,7 @@ class RawDataInterpreter(object):
             self.hist_tot = np.zeros((512, 512, self.n_scan_params, 128), dtype=numba.uint16)
             self.hist_occ = np.zeros((512, 512, self.n_scan_params), dtype=numba.uint32)
         self.hist_tdc = np.zeros(4096, dtype=numba.uint32)
+        self.hist_tdc_trigdist = np.zeros(256, dtype=numba.uint32)
         self.n_triggers = 0
         self.n_tdc = 0
 

@@ -360,7 +360,7 @@ class Analysis(object):
                     pbar.update(upd)
                 pbar.close()
 
-                hist_occ, hist_tot, hist_tdc = interpreter.get_histograms()
+                hist_occ, hist_tot, hist_tdc, hist_tdc_trigdist = interpreter.get_histograms()
 
         self._create_additional_hit_data(hist_occ, hist_tot)
         if self.cluster_hits:
