@@ -74,8 +74,7 @@ class SourceScan(ScanBase):
         self.log.success('Scan finished')
 
     def _analyze(self):
-        self.hist_occ = 0
-        self.hist_tot = 0
+        self.configuration['bench']['analysis']['cluster_hits'] = True
         with analysis.Analysis(raw_data_file=self.output_filename + '.h5', **self.configuration['bench']['analysis']) as a:
             a.analyze_data()
 
