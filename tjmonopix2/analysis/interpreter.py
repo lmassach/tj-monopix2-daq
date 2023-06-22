@@ -185,7 +185,7 @@ class RawDataInterpreter(object):
                 tdc_trigger_dist = get_tdc_trigger_dist(raw_data_word)
 
                 hit_data[hit_index]["col"] = 0x3FE  # 1022 as TDC identifier
-                hit_data[hit_index]["row"] = 0
+                hit_data[hit_index]["row"] = tdc_trigger_dist
                 hit_data[hit_index]["le"] = tdc_trigger_dist
                 hit_data[hit_index]["te"] = 0
                 hit_data[hit_index]["token_id"] = tdc_value
