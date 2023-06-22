@@ -149,6 +149,8 @@ class Analysis(object):
                       'column': 'column',
                       'row': 'row',
                       'charge': 'charge',
+                      'le': 'le',
+                      'te': 'te',
                       'timestamp': 'timestamp'
                       }
         hit_description = [('event_number', 'u4'),
@@ -156,6 +158,8 @@ class Analysis(object):
                            ('frame', 'u1'),
                            ('column', 'u2'),
                            ('row', 'u2'),
+                           ('le', 'i1'),
+                           ('te', 'i1'),
                            ('charge', 'u1'),
                            ('timestamp', 'i8')]
         cluster_fields = {'event_number': 'event_number',
@@ -167,6 +171,8 @@ class Analysis(object):
                           'scan_param_id': 'scan_param_id',
                           'seed_col': 'seed_column',
                           'seed_row': 'seed_row',
+                          'seed_le': 'seed_le',
+                          'seed_te': 'seed_te',
                           'mean_col': 'mean_column',
                           'mean_row': 'mean_row'}
         cluster_description = [('event_number', 'u4'),
@@ -175,6 +181,8 @@ class Analysis(object):
                                ('tot', '<u2'),
                                ('seed_col', '<u2'),
                                ('seed_row', '<u2'),
+                               ('seed_le', '<i1'),
+                               ('seed_te', '<i1'),
                                ('mean_col', '<f4'),
                                ('mean_row', '<f4'),
                                ('dist_col', '<u4'),
@@ -242,6 +250,8 @@ class Analysis(object):
                 clusters[cluster_index].cluster_shape = cluster_shape
                 clusters[cluster_index].dist_col = max_col - min_col + 1
                 clusters[cluster_index].dist_row = max_row - min_row + 1
+                clusters[cluster_index].seed_le = hits[seed_hit_index].le
+                clusters[cluster_index].seed_te = hits[seed_hit_index].te
 
             def end_of_cluster_function(hits, clusters, cluster_size,
                                         cluster_hit_indices, cluster_index,
@@ -342,6 +352,8 @@ class Analysis(object):
                             hit_data_cs_fmt['frame'][:] = -1
                             hit_data_cs_fmt['column'][:] = hit_dat['col'][:]
                             hit_data_cs_fmt['row'][:] = hit_dat['row'][:]
+                            hit_data_cs_fmt['le'][:] = hit_dat['le'][:]
+                            hit_data_cs_fmt['te'][:] = hit_dat['te'][:]
                             hit_data_cs_fmt['charge'][:] = ((hit_dat[:]["te"] - hit_dat[:]["le"]) & 0x7F) + 1
                             hit_data_cs_fmt['timestamp'][:] = hit_dat['timestamp'][:]
                             data_to_clusterizer = hit_data_cs_fmt
