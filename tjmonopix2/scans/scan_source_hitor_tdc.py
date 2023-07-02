@@ -13,10 +13,10 @@ from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.analysis import analysis
 
 scan_configuration = {
-    'start_column': 480,
-    'stop_column': 486,
-    'start_row': 200,
-    'stop_row': 350,
+    'start_column': 0,
+    'stop_column': 224,
+    'start_row': 0,
+    'stop_row': 512,
 }
 
 
@@ -37,12 +37,6 @@ class SourceScan(ScanBase):
 
         self.chip.registers["SEL_PULSE_EXT_CONF"].write(0)
         self.chip.registers["CMOS_TX_EN_CONF"].write(1)
-
-        # self.chip.registers["ITHR"].write(35)
-        # self.chip.registers["VRESET"].write(100)
-        # self.chip.registers["VCASP"].write(40)
-        # self.chip.registers["IBIAS"].write(60)
-        # self.chip.registers["ICASN"].write(8)
         
         # configure TDC in FPGA
         self.daq['tdc'].EN_WRITE_TIMESTAMP = 1

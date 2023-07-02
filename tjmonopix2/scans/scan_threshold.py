@@ -18,9 +18,9 @@ scan_configuration = {
     'stop_row': 512,
 
     'n_injections': 100,
-    'VCAL_HIGH': 80,
-    'VCAL_LOW_start': 80,
-    'VCAL_LOW_stop': 40,
+    'VCAL_HIGH': 140,
+    'VCAL_LOW_start': 130,
+    'VCAL_LOW_stop': 80,
     'VCAL_LOW_step': -1
 }
 

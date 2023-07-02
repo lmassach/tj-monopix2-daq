@@ -26,8 +26,8 @@ scan_configuration = {
     'n_injections': 100,
 
     # Target threshold
-    'VCAL_LOW': 1,
-    'VCAL_HIGH': 35,
+    'VCAL_LOW': 10,
+    'VCAL_HIGH': 40,
 
     # This setting does not have to be changed, it only allows (slightly) faster retuning
     # E.g.: gdac_value_bits = [3, 2, 1, 0] uses the 4th, 3rd, 2nd, and 1st GDAC value bit.
@@ -65,6 +65,18 @@ class GDACTuning(ScanBase):
 
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
+
+        ## Normal and NC Frontend
+        self.chip.registers["VRESET"].write(120)
+        self.chip.registers["ITUNE"].write(200)
+
+        ## HV and HV Casc FE
+        # self.chip.registers["ITHR"].write(35)
+        # self.chip.registers["VRESET"].write(100)
+        # self.chip.registers["VCASP"].write(40)
+        # self.chip.registers["IBIAS"].write(60)
+        # self.chip.registers["ICASN"].write(8)
+        # self.chip.registers["ITUNE"].write(250)
 
         self.chip.registers["VL"].write(VCAL_LOW)
         self.chip.registers["VH"].write(VCAL_HIGH)
