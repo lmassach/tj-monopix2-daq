@@ -38,6 +38,7 @@ event_dtype = np.dtype([
     ("charge", "<u1"),
     ("le", "<i1"),
     ("te", "<i1"),
+    ("token_id", "<i4"),
     ("timestamp", "<i8"),
 ])
 

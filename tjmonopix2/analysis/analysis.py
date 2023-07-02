@@ -151,7 +151,8 @@ class Analysis(object):
                       'charge': 'charge',
                       'le': 'le',
                       'te': 'te',
-                      'timestamp': 'timestamp'
+                      'token_id': 'token_id',
+                      'timestamp': 'timestamp',
                       }
         hit_description = [('event_number', 'u4'),
                            ('trigger_number', 'u4'),
@@ -161,7 +162,8 @@ class Analysis(object):
                            ('le', 'i1'),
                            ('te', 'i1'),
                            ('charge', 'u1'),
-                           ('timestamp', 'i8')]
+                           ('timestamp', 'i8'),
+                           ('token_id', 'i4')]
         cluster_fields = {'event_number': 'event_number',
                           'column': 'column',
                           'row': 'row',
@@ -173,8 +175,9 @@ class Analysis(object):
                           'seed_row': 'seed_row',
                           'seed_le': 'seed_le',
                           'seed_te': 'seed_te',
+                          'seed_token_id': 'seed_token_id',
                           'mean_col': 'mean_column',
-                          'mean_row': 'mean_row'}
+                          'mean_row': 'mean_row',}
         cluster_description = [('event_number', 'u4'),
                                ('id', '<u2'),
                                ('size', '<u2'),
@@ -183,6 +186,7 @@ class Analysis(object):
                                ('seed_row', '<u2'),
                                ('seed_le', '<i1'),
                                ('seed_te', '<i1'),
+                               ('seed_token_id', '<i4'),
                                ('mean_col', '<f4'),
                                ('mean_row', '<f4'),
                                ('dist_col', '<u4'),
@@ -252,6 +256,7 @@ class Analysis(object):
                 clusters[cluster_index].dist_row = max_row - min_row + 1
                 clusters[cluster_index].seed_le = hits[seed_hit_index].le
                 clusters[cluster_index].seed_te = hits[seed_hit_index].te
+                clusters[cluster_index].seed_token_id = hits[seed_hit_index].token_id
 
             def end_of_cluster_function(hits, clusters, cluster_size,
                                         cluster_hit_indices, cluster_index,
@@ -354,6 +359,7 @@ class Analysis(object):
                             hit_data_cs_fmt['row'][:] = hit_dat['row'][:]
                             hit_data_cs_fmt['le'][:] = hit_dat['le'][:]
                             hit_data_cs_fmt['te'][:] = hit_dat['te'][:]
+                            hit_data_cs_fmt['token_id'][:] = hit_dat['token_id'][:]
                             hit_data_cs_fmt['charge'][:] = ((hit_dat[:]["te"] - hit_dat[:]["le"]) & 0x7F) + 1
                             hit_data_cs_fmt['timestamp'][:] = hit_dat['timestamp'][:]
                             data_to_clusterizer = hit_data_cs_fmt
