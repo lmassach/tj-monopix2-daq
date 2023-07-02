@@ -260,15 +260,15 @@ BUFG BUFG_inst_CLK320  (.O(CLK320),  .I(CLK320_PLL));
 
 // MGT CLK (from Si570 or SMA input)
 wire CLKCMD;
-
-IBUFDS_GTE2 IBUFDS_refclk  
-(
-    .O               (CLKCMD),
-    .ODIV2           (),
-    .CEB             (1'b0),
-    .I               (MGT_REFCLK0_P),
-    .IB              (MGT_REFCLK0_N)
-);
+assign CLKCMD = CLK160;
+// IBUFDS_GTE2 IBUFDS_refclk  
+// (
+//     .O               (CLKCMD),
+//     .ODIV2           (),
+//     .CEB             (1'b0),
+//     .I               (MGT_REFCLK0_P),
+//     .IB              (MGT_REFCLK0_N)
+// );
 
 // -------  LEMO TX ------- //
 wire RJ45_CLK, RJ45_BUSY;
