@@ -6,7 +6,7 @@ import numpy as np
 import tables as tb
 
 
-def main(basepath_infiles):
+def main(basepath_infiles, lim=0.0):
     out_path = os.path.dirname(basepath_infiles[0])
     tdcs = [analyze_tdc(f) for f in basepath_infiles]
 
@@ -16,6 +16,8 @@ def main(basepath_infiles):
     
     ax.set_ylabel('Timewalk / ns')
     ax.set_xlabel('ToT / 25ns')
+    if lim:
+        ax.set_ylim(0.0, lim)
     ax.grid()
     ax.legend()
     ax.set_title(f'Timewalk vs ToT')
@@ -30,6 +32,8 @@ def main(basepath_infiles):
     
     ax.set_xlabel('Injection Charge, deltaV / DAC')
     ax.set_ylabel('Timewalk / ns')
+    if lim:
+        ax.set_ylim(0.0, lim)
     ax.grid()
     ax.legend()
     ax.set_title(f'Timewalk vs Injected Charge')
@@ -119,5 +123,6 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("input_files", nargs="+", metavar="input_file",
                         help="The input _timewalk_scan_intepreted.h5 file(s)")
+    parser.add_argument("--lim", type=float, default=0.0, help="Optional limit for y axis in ns.")
     args = parser.parse_args()
-    main(args.input_files)
+    main(args.input_files, args.lim)
