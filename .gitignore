@@ -148,6 +148,8 @@ firmware/bit/*
 *.h5
 *.pdf
 *.lprof
+*.png
+output_data/
 
 # Tests
 sim_build

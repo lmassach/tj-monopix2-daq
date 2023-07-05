@@ -18,8 +18,8 @@ from tjmonopix2.scans.shift_and_inject import shift_and_inject, get_scan_loop_ma
 from tjmonopix2.analysis import online as oa
 
 scan_configuration = {
-    'start_column': 0,
-    'stop_column': 64,
+    'start_column': 480,
+    'stop_column': 512,
     'start_row': 0,
     'stop_row': 512,
 
@@ -27,7 +27,7 @@ scan_configuration = {
 
     # Target threshold
     'VCAL_LOW': 10,
-    'VCAL_HIGH': 40
+    'VCAL_HIGH': 10+23,
 }
 
 
@@ -58,6 +58,18 @@ class TDACTuning(ScanBase):
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100
 
+        # Enable readout and bcid/freeze distribution only to columns we actually use
+        dcols_enable = [0] * 16
+        for c in range(start_column, stop_column):
+            dcols_enable[c // 32] |= (1 << ((c >> 1) & 15))
+        for c in []:  # List of disabled columns
+            dcols_enable[c // 32] &= ~(1 << ((c >> 1) & 15))
+        for i, v in enumerate(dcols_enable):
+            self.chip._write_register(155 + i, v)  # EN_RO_CONF
+            self.chip._write_register(171 + i, v)  # EN_BCID_CONF
+            self.chip._write_register(187 + i, v)  # EN_RO_RST_CONF
+            self.chip._write_register(203 + i, v)  # EN_FREEZE_CONF
+        
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
 

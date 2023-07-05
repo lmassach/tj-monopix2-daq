@@ -12,15 +12,15 @@ from tjmonopix2.system.scan_base import ScanBase
 from tqdm import tqdm
 
 scan_configuration = {
-    'start_column': 0,
-    'stop_column': 32,
+    'start_column': 450, #485,
+    'stop_column': 451, #486,
     'start_row': 0,
     'stop_row': 512,
 
     'n_injections': 100,
     'VCAL_HIGH': 140,
-    'VCAL_LOW_start': 130,
-    'VCAL_LOW_stop': 80,
+    'VCAL_LOW_start': 140-1,
+    'VCAL_LOW_stop': 140-50,
     'VCAL_LOW_step': -1
 }
 
@@ -31,6 +31,18 @@ class ThresholdScan(ScanBase):
     def _configure(self, start_column=0, stop_column=512, start_row=0, stop_row=512, **_):
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
+
+        # Enable readout and bcid/freeze distribution only to columns we actually use
+        dcols_enable = [0] * 16
+        for c in range(start_column, stop_column):
+            dcols_enable[c // 32] |= (1 << ((c >> 1) & 15))
+        for c in []:  # List of disabled columns
+            dcols_enable[c // 32] &= ~(1 << ((c >> 1) & 15))
+        for i, v in enumerate(dcols_enable):
+            self.chip._write_register(155 + i, v)  # EN_RO_CONF
+            self.chip._write_register(171 + i, v)  # EN_BCID_CONF
+            self.chip._write_register(187 + i, v)  # EN_RO_RST_CONF
+            self.chip._write_register(203 + i, v)  # EN_FREEZE_CONF
 
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)

@@ -18,8 +18,8 @@ from tjmonopix2.analysis import online as oa
 
 
 scan_configuration = {
-    'start_column': 32,
-    'stop_column': 64,
+    'start_column': 128,
+    'stop_column': 128+32,
     'start_row': 0,
     'stop_row': 512,
 
@@ -27,12 +27,12 @@ scan_configuration = {
 
     # Target threshold
     'VCAL_LOW': 10,
-    'VCAL_HIGH': 40,
+    'VCAL_HIGH': 10+40,
 
     # This setting does not have to be changed, it only allows (slightly) faster retuning
     # E.g.: gdac_value_bits = [3, 2, 1, 0] uses the 4th, 3rd, 2nd, and 1st GDAC value bit.
     # GDAC is not an existing DAC, its value is mapped to ITHR currently
-    'gdac_value_bits': range(6, -1, -1)
+    'gdac_value_bits': range(4, -1, -1)
 }
 
 
@@ -62,6 +62,18 @@ class GDACTuning(ScanBase):
         self.chip.masks['enable'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['tdac'][start_column:stop_column, start_row:stop_row] = 0b100
+
+        # Enable readout and bcid/freeze distribution only to columns we actually use
+        dcols_enable = [0] * 16
+        for c in range(start_column, stop_column):
+            dcols_enable[c // 32] |= (1 << ((c >> 1) & 15))
+        for c in []:  # List of disabled columns
+            dcols_enable[c // 32] &= ~(1 << ((c >> 1) & 15))
+        for i, v in enumerate(dcols_enable):
+            self.chip._write_register(155 + i, v)  # EN_RO_CONF
+            self.chip._write_register(171 + i, v)  # EN_BCID_CONF
+            self.chip._write_register(187 + i, v)  # EN_RO_RST_CONF
+            self.chip._write_register(203 + i, v)  # EN_FREEZE_CONF
 
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
