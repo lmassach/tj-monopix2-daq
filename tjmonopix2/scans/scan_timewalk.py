@@ -38,6 +38,26 @@ class TimewalkScan(ScanBase):
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = True
         self.chip.masks['hitor'][start_column:stop_column, start_row:stop_row] = True
 
+        # Enable readout and bcid/freeze distribution only to columns we actually use
+        dcols_enable = [0] * 16
+        for c in range(start_column, stop_column):
+            dcols_enable[c // 32] |= (1 << ((c >> 1) & 15))
+        for c in []:  # List of disabled columns
+            dcols_enable[c // 32] &= ~(1 << ((c >> 1) & 15))
+        for i, v in enumerate(dcols_enable):
+            self.chip._write_register(155 + i, v)  # EN_RO_CONF
+            self.chip._write_register(171 + i, v)  # EN_BCID_CONF
+            self.chip._write_register(187 + i, v)  # EN_RO_RST_CONF
+            self.chip._write_register(203 + i, v)  # EN_FREEZE_CONF
+
+        self.chip.registers["ITHR"].write(30)
+        self.chip.registers["IBIAS"].write(60)
+        self.chip.registers["VRESET"].write(50)
+        self.chip.registers["VCASP"].write(40)
+        self.chip.registers["VCASC"].write(140)
+        self.chip.registers["IDB"].write(150)
+        self.chip.registers["ITUNE"].write(200)
+
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
 

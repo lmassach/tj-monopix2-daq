@@ -12,8 +12,8 @@ from tjmonopix2.system.scan_base import ScanBase
 from tqdm import tqdm
 
 scan_configuration = {
-    'start_column': 0,
-    'stop_column': 1,
+    'start_column': 295,
+    'stop_column': 295+16,
     'start_row': 0,
     'stop_row': 512,
 }
@@ -26,6 +26,18 @@ class AnalogScan(ScanBase):
         self.chip.masks['enable'][start_column, start_row]  = True
         self.chip.masks['injection'][start_column, start_row] = True
         self.chip.masks['hitor'][start_column:stop_column, start_row:stop_row] = True
+
+        # Enable readout and bcid/freeze distribution only to columns we actually use
+        dcols_enable = [0] * 16
+        for c in range(start_column, stop_column):
+            dcols_enable[c // 32] |= (1 << ((c >> 1) & 15))
+        for c in []:  # List of disabled columns
+            dcols_enable[c // 32] &= ~(1 << ((c >> 1) & 15))
+        for i, v in enumerate(dcols_enable):
+            self.chip._write_register(155 + i, v)  # EN_RO_CONF
+            self.chip._write_register(171 + i, v)  # EN_BCID_CONF
+            self.chip._write_register(187 + i, v)  # EN_RO_RST_CONF
+            self.chip._write_register(203 + i, v)  # EN_FREEZE_CONF
 
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update(force=True)
@@ -55,8 +67,8 @@ class AnalogScan(ScanBase):
 
         pbar = tqdm(total=get_scan_loop_mask_steps(self.chip) * len(pixel_range), unit='Mask steps')
         for scan_param_id, pixel_id in enumerate(pixel_range):
-            row = (pixel_id + start_column)  % 512
-            col = (pixel_id + start_column) // 512
+            row = (pixel_id)  % 512
+            col = (pixel_id) // 512 + start_column
             # self.log.info(f'Step: col: {col}, row {row}')
 
             self.chip.masks['enable'][col, row] = True
