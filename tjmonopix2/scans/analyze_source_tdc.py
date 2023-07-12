@@ -10,8 +10,8 @@ from tjmonopix2.analysis import analysis
 
 
 
-tot_cut_pos = 2
-tot_cut_neg = -4
+tot_cut_pos = 0
+tot_cut_neg = -2
 
 def analyze(file):
     file_interpreted = file.rsplit(".h5")[0] + "_interpreted_cluster.h5"
@@ -37,7 +37,7 @@ def table_to_dict(table_item, key_name='attribute', value_name='value'):
 
 def main(infile):
     out_prefix = os.path.splitext(infile)[0]
-    chip_sn, tdc_tdel_2dhist, tdel_row_2dhist, tdel_row_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist = analyze_tdc(infile)
+    chip_sn, idel, tdc_tdel_2dhist, tdel_row_2dhist, tdel_row_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist, lediff_row_2dhist = analyze_tdc(infile)
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
     
@@ -109,7 +109,7 @@ def main(infile):
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
     
     #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
-    image = plt.imshow(ts_le_2dhist, aspect='auto', interpolation='none')
+    image = plt.imshow(ts_le_2dhist, extent=[0, 128, 64, 0], aspect='auto', interpolation='none')
     cbar = plt.colorbar(image)
     cbar.set_label('Hits')
     #plt.clim(14,16)
@@ -120,12 +120,61 @@ def main(infile):
     
     ax.set_ylabel('Corrected Timestamp / 25ns')
     ax.set_xlabel('Le BCID')
-    #ax.grid()
+    ax.grid()
     #ax.set_title(f'Row vs Trigger distance')
 
     #plt.tight_layout()
     plt.savefig(f'{out_prefix}_{chip_sn}_source_ts_le_2dhist_clust.png')
     plt.close()
+
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+    
+    #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
+    time_offset = np.nanargmax(lediff_row_2dhist[:, 0])
+    lediff_row_2dhist = np.divide(lediff_row_2dhist, np.nansum(lediff_row_2dhist, axis=0))
+    image = plt.imshow(lediff_row_2dhist, aspect='auto', interpolation='none', extent=[0, 128, 64, 0])
+    cbar = plt.colorbar(image)
+    cbar.set_label('Hits (relative)')
+    #plt.clim(14,16)
+    plt.gca().invert_yaxis()
+    
+    #ax.set_xlim([479, 496])
+    ax.set_ylim([time_offset/16-5, time_offset/16+5])
+    
+    ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
+    ax.set_xlabel('Row')
+    ax.grid()
+    ax.set_title(f'Row vs Le distance (IDEL: {idel})')
+
+    #plt.tight_layout()
+    plt.savefig(f'{out_prefix}_{chip_sn}_source_lediff_row_2dhist.png')
+    plt.close()
+
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+
+    print(time_offset)
+    weights = np.nan_to_num(lediff_row_2dhist[time_offset-5*16:time_offset+5*16, :])
+    sum_w = np.sum(weights, axis=0)
+    print(weights.shape)
+    print((np.arange(time_offset-5*16, time_offset+5*16)).reshape((-1,1)).shape)
+    sum_wv = np.sum((np.arange(time_offset-5*16, time_offset+5*16)).reshape((-1,1)) * weights, axis=0)
+    lediff_row_mean = sum_wv / sum_w
+    plt.plot(lediff_row_mean / 16)
+    
+    #ax.set_xlim([479, 496])
+    ax.set_ylim([time_offset/16-2, time_offset/16+2])
+    
+    ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
+    ax.set_xlabel('Row')
+    ax.grid()
+    ax.set_title(f'Row vs Le distance (IDEL: {idel})')
+
+    #plt.tight_layout()
+    plt.savefig(f'{out_prefix}_{chip_sn}_source_lediff_row_avg.png')
+    plt.close()
+
 
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
@@ -180,23 +229,26 @@ def ana_clist(seed_col,
               seed_te,
               token_id,    # TDC: Value
               event_no,    # TDC: Timestamp
-              tdc_tdel_2dhist, tdel_col_2dhist, tdel_col_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist):
-    dist = 1
+              tdc_tdel_2dhist, tdel_col_2dhist, tdel_col_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist, lediff_row_2dhist):
     for i in nb.prange(len(seed_col)):
         if seed_col[i] == 1022:  # TDC hit
             rowi = int(seed_row[i])
-            
             if rowi != 254:
-                if i+dist < len(seed_col) and seed_col[i+dist] != 1022:
-                    tot = (int(seed_te[i+dist]) - int(seed_le[i+dist])) % 128
-                    diff = int(token_id[i])//16 - tot
-                    if diff <= tot_cut_pos and diff >= tot_cut_neg:
-                        tdc_tdel_2dhist[int(seed_le[i]), int(token_id[i])] += 1
-                        tdel_col_2dhist[rowi, int(seed_row[i+dist])] += 1
-                        tdel_col_2dhist_tdc[rowi, int(seed_row[i+dist])] += int(token_id[i])
-                        ts_le_2dhist[int(event_no[i])+16-rowi//16, int(seed_le[i+dist])] += 1
-                        ass_hitmap[int(seed_col[i+dist]), int(seed_row[i+dist])] += 1
-                        tdc_tot_2dhist[int(token_id[i]), tot] += 1
+                for dist in range(1, 10):
+                    if i+dist < len(seed_col) and seed_col[i+dist] != 1022:
+                        tot = (int(seed_te[i+dist]) - int(seed_le[i+dist])) % 128
+                        diff = int(token_id[i])//16 - tot
+                        if diff <= tot_cut_pos and diff >= tot_cut_neg:
+                            tdc_tdel_2dhist[int(seed_le[i]), int(token_id[i])] += 1
+                            tdel_col_2dhist[rowi, int(seed_row[i+dist])] += 1
+                            tdel_col_2dhist_tdc[rowi, int(seed_row[i+dist])] += int(token_id[i])
+                            ts_le_2dhist[((int(event_no[i])*16)-(rowi))%(64*16), int(seed_le[i+dist])] += 1
+                            ass_hitmap[int(seed_col[i+dist]), int(seed_row[i+dist])] += 1
+                            tdc_tot_2dhist[int(token_id[i]), tot] += 1
+                            if tot > 80:
+                                lediff_row_2dhist[((int(event_no[i])*16)-(rowi) - int(seed_le[i+dist]*16))%(64*16), int(seed_row[i+dist])] += 1
+                    else:
+                        break
                         
 
 def analyze_tdc(p):    
@@ -204,12 +256,14 @@ def analyze_tdc(p):
 
     clist = h5file.root.Cluster
     settings = table_to_dict(h5file.root.configuration_in.chip.settings)
+    regs =     table_to_dict(h5file.root.configuration_in.chip.registers, key_name='register')
     #scan_params = h5file.root.configuration_out.scan.scan_params
     
     tdc_tdel_2dhist = np.zeros([256, 4096])
     tdel_col_2dhist = np.zeros([256, 512])
     tdel_col_2dhist_tdc = np.zeros([256, 512])
-    ts_le_2dhist = np.zeros([256+16, 128])
+    ts_le_2dhist = np.zeros([64*16, 128])
+    lediff_row_2dhist = np.zeros([64*16, 512])
     ass_hitmap = np.zeros([512, 512])
     tdc_tot_2dhist = np.zeros([4096, 128])
     
@@ -219,7 +273,7 @@ def analyze_tdc(p):
               clist.col('seed_te'),
               clist.col('seed_token_id'),  # TDC Value
               clist.col('event_number'),   # TDC Timestamp
-              tdc_tdel_2dhist, tdel_col_2dhist, tdel_col_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist)
+              tdc_tdel_2dhist, tdel_col_2dhist, tdel_col_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist, lediff_row_2dhist)
     
     # ana_hlist(hitlist.col('col'),          # 1022
     #           hitlist.col('row'),          # Trigger Dist
@@ -239,8 +293,9 @@ def analyze_tdc(p):
     ass_hitmap[ass_hitmap == 0] = np.nan
     tdel_col_2dhist_tdc = np.divide(tdel_col_2dhist_tdc, tdel_col_2dhist)/16
     tdc_tot_2dhist[tdc_tot_2dhist == 0] = np.nan
+    lediff_row_2dhist[lediff_row_2dhist == 0] = np.nan
     
-    return settings['chip_sn'], tdc_tdel_2dhist, tdel_col_2dhist, tdel_col_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist
+    return settings['chip_sn'], int(regs['IDEL']), tdc_tdel_2dhist, tdel_col_2dhist, tdel_col_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist, lediff_row_2dhist
 
 
 
