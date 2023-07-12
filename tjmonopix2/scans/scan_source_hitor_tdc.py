@@ -95,9 +95,15 @@ class SourceScan(ScanBase):
                 time.sleep(sleep_time)
                 last_time = now
                 now = time.time()
+
+                temp =  self.daq.get_temperature_NTC(connector=7)
+                pbar.set_postfix_str(f'T: {temp:4.1f}C')
+
                 pbar.update(int(round(now - last_time)))
+
         if STOP_RUNNING:
-            print("\x1b[36mTrying to stop gracefully, use CTRL+\\ if you want to kill now\x1b[0m")
+            self.log.warning("Trying to stop gracefully without breaking output files")
+            self.log.warning("Use CTRL+\\ (SIGQUIT) if you want to kill now")
         pbar.close()
 
         ret = {}
