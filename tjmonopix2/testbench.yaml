@@ -7,7 +7,7 @@ modules:
   module_0: # Arbitrary name of module, defines folder name with chip sub folders
     identifier: "unknown" # Module/wafer/PCB identifier, has to be given (e.g. SCC number)
     chip_0: # Arbitrary name of chip, defines folder name with chip data
-      chip_sn: "W8R3"
+      chip_sn: "W08R19"
       chip_id: 0
       receiver: "rx0"
       chip_config_file: # If defined: use config from in file (either .cfg.yaml or .h5). If not defined use chip config of latest scan and std. config if no previous scan exists
@@ -38,7 +38,7 @@ hardware: # Setup-specific hardware settings
 
 calibration: # Setup-specific calibration constants
   bdaq_ntc: # Resistors on BDAQ board for NTC readout
-    R16: 39.02e3
+    R16: 1.2e6
     R17: 20e3
     R19: 7.95e3
 

@@ -36,6 +36,7 @@ def table_to_dict(table_item, key_name='attribute', value_name='value'):
 
 
 def main(infile):
+    out_prefix = os.path.splitext(infile)[0]
     chip_sn, tdc_tdel_2dhist, tdel_row_2dhist, tdel_row_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist = analyze_tdc(infile)
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
@@ -57,7 +58,7 @@ def main(infile):
     ax.set_title(f'{chip_sn}: ToT vs Trigger distance')
 
     plt.tight_layout()
-    plt.savefig(f'{chip_sn}_source_tdc_tdel_2dhist.png')
+    plt.savefig(f'{out_prefix}_{chip_sn}_source_tdc_tdel_2dhist.png')
     plt.close()
     
     # TDEL vs row
@@ -79,7 +80,7 @@ def main(infile):
     ax.set_title(f'{chip_sn}: Row vs Trigger distance')
 
     plt.tight_layout()
-    plt.savefig(f'{chip_sn}_source_tdel_row_2dhist_clust.png')
+    plt.savefig(f'{out_prefix}_{chip_sn}_source_tdel_row_2dhist_clust.png')
     plt.close()
     
     
@@ -101,7 +102,7 @@ def main(infile):
     ax.set_title(f'{chip_sn}: Row vs Trigger distance')
 
     plt.tight_layout()
-    plt.savefig(f'{chip_sn}_source_tdel_row_2dhist_tdc_clust.png')
+    plt.savefig(f'{out_prefix}_{chip_sn}_source_tdel_row_2dhist_tdc_clust.png')
     plt.close()
 
 
@@ -123,7 +124,7 @@ def main(infile):
     #ax.set_title(f'Row vs Trigger distance')
 
     #plt.tight_layout()
-    plt.savefig(f'{chip_sn}_source_ts_le_2dhist_clust.png')
+    plt.savefig(f'{out_prefix}_{chip_sn}_source_ts_le_2dhist_clust.png')
     plt.close()
 
 
@@ -142,7 +143,7 @@ def main(infile):
     ax.set_title(f'{chip_sn}: TDC Associated seed pixel map')
 
     plt.tight_layout()
-    plt.savefig(f'{chip_sn}_source_TDC_ass_map.png')
+    plt.savefig(f'{out_prefix}_{chip_sn}_source_TDC_ass_map.png')
     plt.close()
 
 
@@ -164,7 +165,7 @@ def main(infile):
     ax.set_title(f'{chip_sn}: ToT vs TDC value')
 
     plt.tight_layout()
-    plt.savefig(f'{chip_sn}_source_tdc_tot.png')
+    plt.savefig(f'{out_prefix}_{chip_sn}_source_tdc_tot.png')
     plt.close()
 
     
@@ -250,7 +251,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     for p in args.input_files:
-        if not p.__contains__('interpreted_cluster'):
+        if not p.__contains__('interpreted'):
             p = analyze(p)
         main(p)
     
