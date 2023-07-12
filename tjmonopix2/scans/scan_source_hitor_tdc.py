@@ -7,12 +7,13 @@
 
 import time
 import signal
+import os
 
+import numpy as np
 from tqdm import tqdm
 
 from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.analysis import analysis
-import os
 
 
 STOP_RUNNING = False
@@ -83,12 +84,17 @@ class SourceScan(ScanBase):
 
     def _scan(self, scan_time=120, **_):
         
-        temp =  self.daq.get_temperature_NTC(connector=7)
-        self.log.info(f'Chip temperature: {temp}C')
+        temperature = self.daq.get_temperature_NTC(connector=7)
+        self.log.info(f'Chip temperature: {temperature}C')
 
         pbar = tqdm(total=int(scan_time), unit='s')
         now = time.time()
+        start_time = now
         end_time = now + scan_time
+
+        dtype = np.dtype([('time', np.float32), ('temperature', np.float32)])
+        temperature_table = self.h5_file.create_table(self.h5_file.root, name='temperature', title='Temperature vs time', description=dtype)
+        
         with self.readout(scan_param_id=0):
             while now < end_time and not STOP_RUNNING:
                 sleep_time = min(1, end_time - now)
@@ -96,8 +102,9 @@ class SourceScan(ScanBase):
                 last_time = now
                 now = time.time()
 
-                temp =  self.daq.get_temperature_NTC(connector=7)
-                pbar.set_postfix_str(f'T: {temp:4.1f}C')
+                temperature =  self.daq.get_temperature_NTC(connector=7)
+                pbar.set_postfix_str(f'T: {temperature:4.1f}C')
+                temperature_table.append(np.array([(now - start_time, temperature)], dtype=dtype))
 
                 pbar.update(int(round(now - last_time)))
 
