@@ -103,6 +103,11 @@ class RegisterTable(tb.IsDescription):
     value = tb.StringCol(256)
 
 
+class TemperatureTable(tb.IsDescription):
+    time = tb.Float32Col(pos=0)
+    temperature = tb.Float32Col(pos=1)
+
+
 class ScanData:
     ''' Class to store data created in the scan.
 
@@ -219,6 +224,10 @@ class ScanBase(object):
         # All chips data containers
         self.chips = {}
         self.suffix = suffix
+
+        # Temperature-related utilities
+        self.temperature_start_time = 0
+        self.temperature_values = []
 
     def init(self, force=False):
         try:
@@ -1135,6 +1144,22 @@ class ScanBase(object):
             if issubclass(exc[0], fifo_readout.FifoError):
                 self.log.error('Aborting run...')
                 self.fifo_readout.stop_readout.set()
+    
+    def update_temperature(self, pbar=None):
+        if True:
+            now = time.time()
+            if not self.temperature_start_time:
+                self.temperature_start_self = now
+            temperature =  self.daq.get_temperature_NTC(connector=7)
+            pbar.set_postfix_str(f'T={temperature:5.1f}C')
+            self.temperature_values.append((now - self.temperature_start_time, temperature))
+            return temperature
+        return 0.0
+
+    def save_temperature(self):
+        temperature_table = self.h5_file.create_table(self.h5_file.root, name='temperature', description=TemperatureTable,
+                                                      title='Temperature vs time', filters=FILTER_TABLES)
+        temperature_table.append(np.array(self.temperature_values, dtype=np.dtype([('time', np.float32), ('temperature', np.float32)])))
 
 
 if __name__ == '__main__':

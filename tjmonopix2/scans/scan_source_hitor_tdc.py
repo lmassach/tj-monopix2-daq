@@ -84,27 +84,19 @@ class SourceScan(ScanBase):
 
     def _scan(self, scan_time=120, **_):
         
-        temperature = self.daq.get_temperature_NTC(connector=7)
-        self.log.info(f'Chip temperature: {temperature}C')
 
         pbar = tqdm(total=int(scan_time), unit='s')
         now = time.time()
-        start_time = now
         end_time = now + scan_time
-
-        dtype = np.dtype([('time', np.float32), ('temperature', np.float32)])
-        temperature_table = self.h5_file.create_table(self.h5_file.root, name='temperature', title='Temperature vs time', description=dtype)
         
         with self.readout(scan_param_id=0):
             while now < end_time and not STOP_RUNNING:
+                self.update_temperature(pbar)
+                
                 sleep_time = min(1, end_time - now)
                 time.sleep(sleep_time)
                 last_time = now
                 now = time.time()
-
-                temperature =  self.daq.get_temperature_NTC(connector=7)
-                pbar.set_postfix_str(f'T: {temperature:4.1f}C')
-                temperature_table.append(np.array([(now - start_time, temperature)], dtype=dtype))
 
                 pbar.update(int(round(now - last_time)))
 
@@ -112,6 +104,7 @@ class SourceScan(ScanBase):
             self.log.warning("Trying to stop gracefully without breaking output files")
             self.log.warning("Use CTRL+\\ (SIGQUIT) if you want to kill now")
         pbar.close()
+        self.save_temperature()
 
         ret = {}
         for r in registers:
