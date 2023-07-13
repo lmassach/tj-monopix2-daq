@@ -1,11 +1,11 @@
 import tables as tb
 import argparse
-import glob
+import numba as nb
 import os.path as path
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from tqdm import tqdm
+from matplotlib.backends.backend_pdf import PdfPages
 from tjmonopix2.analysis import analysis
 
 
@@ -39,192 +39,197 @@ def main(infile):
     out_prefix = os.path.splitext(infile)[0]
     chip_sn, idel, tdc_tdel_2dhist, tdel_row_2dhist, tdel_row_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist, lediff_row_2dhist = analyze_tdc(infile)
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+    with PdfPages(out_prefix + "_ana.pdf") as pdf:
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
 
-    #tdc_tdel_2dhist[tdc_tdel_2dhist > 800] = np.nan
-    #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')
-    image = plt.imshow(tdc_tdel_2dhist, extent=[0, 4096/0.640/25, 256/0.640, 0], aspect='auto', interpolation='none')
-    cbar = plt.colorbar(image)
-    cbar.set_label('Hits')
-    #plt.clim(14,16)
-    plt.gca().invert_yaxis()
+        #tdc_tdel_2dhist[tdc_tdel_2dhist > 800] = np.nan
+        #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')
+        image = plt.imshow(tdc_tdel_2dhist, extent=[0, 4096/0.640/25, 256/0.640, 0], aspect='auto', interpolation='none')
+        cbar = plt.colorbar(image)
+        cbar.set_label('Hits')
+        #plt.clim(14,16)
+        plt.gca().invert_yaxis()
 
-    ax.set_xlim([0, 80])
-    ax.set_ylim([30, 200])
+        ax.set_xlim([0, 80])
+        ax.set_ylim([30, 200])
 
-    ax.set_ylabel('Trigger distance / ns')
-    ax.set_xlabel('ToT / 25ns')
-    ax.grid()
-    ax.set_title(f'{chip_sn}: ToT vs Trigger distance')
+        ax.set_ylabel('Trigger distance / ns')
+        ax.set_xlabel('ToT / 25ns')
+        ax.grid()
+        ax.set_title(f'{chip_sn}: ToT vs Trigger distance')
 
-    plt.tight_layout()
-    plt.savefig(f'{out_prefix}_{chip_sn}_source_tdc_tdel_2dhist.png')
-    plt.close()
+        plt.tight_layout()
+        # plt.savefig(f'{out_prefix}_{chip_sn}_source_tdc_tdel_2dhist.png')
+        pdf.savefig()
+        plt.close()
 
-    # TDEL vs row
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+        # TDEL vs row
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
 
-    #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
-    image = plt.imshow(tdel_row_2dhist, extent=[0, 511, 256/0.640, 0], aspect='auto', interpolation='none')
-    cbar = plt.colorbar(image)
-    cbar.set_label('Hits')
-    #plt.clim(14,16)
-    plt.gca().invert_yaxis()
+        #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
+        image = plt.imshow(tdel_row_2dhist, extent=[0, 511, 256/0.640, 0], aspect='auto', interpolation='none')
+        cbar = plt.colorbar(image)
+        cbar.set_label('Hits')
+        #plt.clim(14,16)
+        plt.gca().invert_yaxis()
 
-    #ax.set_xlim([479, 496])
-    ax.set_ylim([0, 150])
+        #ax.set_xlim([479, 496])
+        ax.set_ylim([0, 150])
 
-    ax.set_ylabel('Trigger distance / ns')
-    ax.set_xlabel('Row')
-    ax.grid()
-    ax.set_title(f'{chip_sn}: Row vs Trigger distance')
+        ax.set_ylabel('Trigger distance / ns')
+        ax.set_xlabel('Row')
+        ax.grid()
+        ax.set_title(f'{chip_sn}: Row vs Trigger distance')
 
-    plt.tight_layout()
-    plt.savefig(f'{out_prefix}_{chip_sn}_source_tdel_row_2dhist_clust.png')
-    plt.close()
-
-
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
-
-    #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
-    image = plt.imshow(tdel_row_2dhist_tdc, extent=[0, 511, 256/0.640, 0], aspect='auto', interpolation='none')
-    cbar = plt.colorbar(image)
-    cbar.set_label('Average ToT/25ns')
-    #plt.clim(14,16)
-    plt.gca().invert_yaxis()
-
-    #ax.set_xlim([479, 496])
-    ax.set_ylim([0, 150])
-
-    ax.set_ylabel('Trigger distance / ns')
-    ax.set_xlabel('Row')
-    ax.grid()
-    ax.set_title(f'{chip_sn}: Row vs Trigger distance')
-
-    plt.tight_layout()
-    plt.savefig(f'{out_prefix}_{chip_sn}_source_tdel_row_2dhist_tdc_clust.png')
-    plt.close()
+        plt.tight_layout()
+        # plt.savefig(f'{out_prefix}_{chip_sn}_source_tdel_row_2dhist_clust.png')
+        pdf.savefig()
+        plt.close()
 
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
 
-    #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
-    image = plt.imshow(ts_le_2dhist, extent=[0, 128, 64, 0], aspect='auto', interpolation='none')
-    cbar = plt.colorbar(image)
-    cbar.set_label('Hits')
-    #plt.clim(14,16)
-    plt.gca().invert_yaxis()
+        #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
+        image = plt.imshow(tdel_row_2dhist_tdc, extent=[0, 511, 256/0.640, 0], aspect='auto', interpolation='none')
+        cbar = plt.colorbar(image)
+        cbar.set_label('Average ToT/25ns')
+        #plt.clim(14,16)
+        plt.gca().invert_yaxis()
 
-    #ax.set_xlim([479, 496])
-    #ax.set_ylim([0, 100])
+        #ax.set_xlim([479, 496])
+        ax.set_ylim([0, 150])
 
-    ax.set_ylabel('Corrected Timestamp / 25ns')
-    ax.set_xlabel('Le BCID')
-    ax.grid()
-    #ax.set_title(f'Row vs Trigger distance')
+        ax.set_ylabel('Trigger distance / ns')
+        ax.set_xlabel('Row')
+        ax.grid()
+        ax.set_title(f'{chip_sn}: Row vs Trigger distance')
 
-    #plt.tight_layout()
-    plt.savefig(f'{out_prefix}_{chip_sn}_source_ts_le_2dhist_clust.png')
-    plt.close()
-
-
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
-
-    # Subtract time offset
-    time_offset = np.nanargmax(lediff_row_2dhist[:, 0])
-    tmp = np.copy(lediff_row_2dhist)
-    sz0 = lediff_row_2dhist.shape[0]
-    for i in range(sz0):
-        lediff_row_2dhist[(i+sz0//2)%sz0,:] = tmp[(i+time_offset)%sz0,:]
-    time_offset = sz0//2
-    # Normalize each row to 1
-    lediff_row_2dhist = np.divide(lediff_row_2dhist, np.nansum(lediff_row_2dhist, axis=0))
-    # Actual plotting
-    image = plt.imshow(lediff_row_2dhist, aspect='auto', interpolation='none', extent=[0, 128, 64, 0])
-    cbar = plt.colorbar(image)
-    cbar.set_label('Hits (relative)')
-    #plt.clim(14,16)
-    plt.gca().invert_yaxis()
-
-    #ax.set_xlim([479, 496])
-    ax.set_ylim([time_offset/16-5, time_offset/16+5])
-
-    ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
-    ax.set_xlabel('Row')
-    ax.grid()
-    ax.set_title(f'Row vs Le distance (IDEL: {idel})')
-
-    #plt.tight_layout()
-    plt.savefig(f'{out_prefix}_{chip_sn}_source_lediff_row_2dhist.png')
-    plt.close()
+        plt.tight_layout()
+        # plt.savefig(f'{out_prefix}_{chip_sn}_source_tdel_row_2dhist_tdc_clust.png')
+        pdf.savefig()
+        plt.close()
 
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
 
-    weights = np.nan_to_num(lediff_row_2dhist[time_offset-5*16:time_offset+5*16, :])
-    sum_w = np.sum(weights, axis=0)
-    sum_wv = np.sum((np.arange(time_offset-5*16, time_offset+5*16)).reshape((-1,1)) * weights, axis=0)
-    lediff_row_mean = sum_wv / sum_w
-    plt.plot(lediff_row_mean / 16)
+        #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
+        image = plt.imshow(ts_le_2dhist, extent=[0, 128, 64, 0], aspect='auto', interpolation='none')
+        cbar = plt.colorbar(image)
+        cbar.set_label('Hits')
+        #plt.clim(14,16)
+        plt.gca().invert_yaxis()
 
-    #ax.set_xlim([479, 496])
-    ax.set_ylim([time_offset/16-2, time_offset/16+2])
+        #ax.set_xlim([479, 496])
+        #ax.set_ylim([0, 100])
 
-    ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
-    ax.set_xlabel('Row')
-    ax.grid()
-    ax.set_title(f'Row vs Le distance (IDEL: {idel})')
+        ax.set_ylabel('Corrected Timestamp / 25ns')
+        ax.set_xlabel('Le BCID')
+        ax.grid()
+        #ax.set_title(f'Row vs Trigger distance')
 
-    #plt.tight_layout()
-    plt.savefig(f'{out_prefix}_{chip_sn}_source_lediff_row_avg.png')
-    plt.close()
-
-
-
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
-
-    image = plt.imshow(ass_hitmap.transpose(), aspect='auto', interpolation='none')
-    cbar = plt.colorbar(image)
-    cbar.set_label('Hits')
-    #plt.clim(14,16)
-    plt.gca().invert_yaxis()
-
-    ax.set_xlabel('Column')
-    ax.set_ylabel('Row')
-    ax.grid()
-    #ax.legend()
-    ax.set_title(f'{chip_sn}: TDC Associated seed pixel map')
-
-    plt.tight_layout()
-    plt.savefig(f'{out_prefix}_{chip_sn}_source_TDC_ass_map.png')
-    plt.close()
+        #plt.tight_layout()
+        # plt.savefig(f'{out_prefix}_{chip_sn}_source_ts_le_2dhist_clust.png')
+        pdf.savefig()
+        plt.close()
 
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
 
-    #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')
-    image = plt.imshow(tdc_tot_2dhist, extent=[0, 127, 4096/16, 0], aspect='auto', interpolation='none')
-    cbar = plt.colorbar(image)
-    cbar.set_label('Hits')
-    #plt.clim(14,16)
-    plt.gca().invert_yaxis()
+        # Subtract time offset
+        time_offset = np.nanargmax(lediff_row_2dhist[:, 0])
+        tmp = np.copy(lediff_row_2dhist)
+        sz0 = lediff_row_2dhist.shape[0]
+        for i in range(sz0):
+            lediff_row_2dhist[(i+sz0//2)%sz0,:] = tmp[(i+time_offset)%sz0,:]
+        time_offset = sz0//2
+        # Normalize each row to 1
+        lediff_row_2dhist = np.divide(lediff_row_2dhist, np.nansum(lediff_row_2dhist, axis=0))
+        # Actual plotting
+        image = plt.imshow(lediff_row_2dhist, aspect='auto', interpolation='none', extent=[0, 128, 64, 0])
+        cbar = plt.colorbar(image)
+        cbar.set_label('Hits (relative)')
+        #plt.clim(14,16)
+        plt.gca().invert_yaxis()
 
-    #ax.set_xlim([0, 80])
-    ax.set_ylim([0, 128])
+        #ax.set_xlim([479, 496])
+        ax.set_ylim([time_offset/16-5, time_offset/16+5])
 
-    ax.set_ylabel('TDC Result / 25ns')
-    ax.set_xlabel('ToT / 25ns')
-    ax.grid()
-    ax.set_title(f'{chip_sn}: ToT vs TDC value')
+        ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
+        ax.set_xlabel('Row')
+        ax.grid()
+        ax.set_title(f'Row vs Le distance (IDEL: {idel})')
 
-    plt.tight_layout()
-    plt.savefig(f'{out_prefix}_{chip_sn}_source_tdc_tot.png')
-    plt.close()
+        #plt.tight_layout()
+        # plt.savefig(f'{out_prefix}_{chip_sn}_source_lediff_row_2dhist.png')
+        pdf.savefig()
+        plt.close()
+
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+
+        weights = np.nan_to_num(lediff_row_2dhist[time_offset-5*16:time_offset+5*16, :])
+        sum_w = np.sum(weights, axis=0)
+        sum_wv = np.sum((np.arange(time_offset-5*16, time_offset+5*16)).reshape((-1,1)) * weights, axis=0)
+        lediff_row_mean = sum_wv / sum_w
+        plt.plot(lediff_row_mean / 16)
+
+        #ax.set_xlim([479, 496])
+        ax.set_ylim([time_offset/16-2, time_offset/16+2])
+
+        ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
+        ax.set_xlabel('Row')
+        ax.grid()
+        ax.set_title(f'Row vs Le distance (IDEL: {idel})')
+
+        #plt.tight_layout()
+        # plt.savefig(f'{out_prefix}_{chip_sn}_source_lediff_row_avg.png')
+        pdf.savefig()
+        plt.close()
 
 
 
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
 
-import numba as nb
+        image = plt.imshow(ass_hitmap.transpose(), aspect='auto', interpolation='none')
+        cbar = plt.colorbar(image)
+        cbar.set_label('Hits')
+        #plt.clim(14,16)
+        plt.gca().invert_yaxis()
+
+        ax.set_xlabel('Column')
+        ax.set_ylabel('Row')
+        ax.grid()
+        #ax.legend()
+        ax.set_title(f'{chip_sn}: TDC Associated seed pixel map')
+
+        plt.tight_layout()
+        # plt.savefig(f'{out_prefix}_{chip_sn}_source_TDC_ass_map.png')
+        pdf.savefig()
+        plt.close()
+
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+
+        #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')
+        image = plt.imshow(tdc_tot_2dhist, extent=[0, 127, 4096/16, 0], aspect='auto', interpolation='none')
+        cbar = plt.colorbar(image)
+        cbar.set_label('Hits')
+        #plt.clim(14,16)
+        plt.gca().invert_yaxis()
+
+        #ax.set_xlim([0, 80])
+        ax.set_ylim([0, 128])
+
+        ax.set_ylabel('TDC Result / 25ns')
+        ax.set_xlabel('ToT / 25ns')
+        ax.grid()
+        ax.set_title(f'{chip_sn}: ToT vs TDC value')
+
+        plt.tight_layout()
+        # plt.savefig(f'{out_prefix}_{chip_sn}_source_tdc_tot.png')
+        pdf.savefig()
+        plt.close()
+
 
 @nb.njit(parallel=False)
 def ana_clist(seed_col,
@@ -310,6 +315,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     for p in args.input_files:
-        if not p.__contains__('interpreted'):
+        if 'interpreted' not in p:
             p = analyze(p)
         main(p)
