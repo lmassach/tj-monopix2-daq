@@ -190,6 +190,56 @@ def main(infile):
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
 
+        # Rebin to groups of 16 rows
+        lediff_row_2dhist_rebin = np.zeros((lediff_row_2dhist.shape[0], lediff_row_2dhist.shape[1] // 16), lediff_row_2dhist.dtype)
+        for i in range(16):
+            lediff_row_2dhist_rebin[:,:] += lediff_row_2dhist[:,i::16]
+        # Actual plotting
+        image = plt.imshow(lediff_row_2dhist_rebin, aspect='auto', interpolation='none', extent=[0, 128, 64, 0])
+        cbar = plt.colorbar(image)
+        cbar.set_label('Hits (relative)')
+        #plt.clim(14,16)
+        plt.gca().invert_yaxis()
+
+        #ax.set_xlim([479, 496])
+        ax.set_ylim([time_offset/16-5, time_offset/16+5])
+
+        ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
+        ax.set_xlabel('Row')
+        ax.grid()
+        ax.set_title(f'Row vs Le distance (IDEL: {idel})')
+
+        #plt.tight_layout()
+        # plt.savefig(f'{out_prefix}_{chip_sn}_source_lediff_row_2dhist_rebin.png')
+        pdf.savefig()
+        plt.close()
+
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+
+        weights = np.nan_to_num(lediff_row_2dhist_rebin[time_offset-5*16:time_offset+5*16, :])
+        sum_w = np.sum(weights, axis=0)
+        sum_wv = np.sum((np.arange(time_offset-5*16, time_offset+5*16)).reshape((-1,1)) * weights, axis=0)
+        lediff_row_mean = sum_wv / sum_w
+        plt.plot(np.arange(0, 512, 16) + 8, lediff_row_mean / 16)
+
+        #ax.set_xlim([479, 496])
+        ax.set_ylim([time_offset/16-2, time_offset/16+2])
+
+        ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
+        ax.set_xlabel('Row')
+        ax.grid()
+        ax.set_title(f'Row vs Le distance (IDEL: {idel})')
+
+        #plt.tight_layout()
+        # plt.savefig(f'{out_prefix}_{chip_sn}_source_lediff_row_avg_rebin.png')
+        pdf.savefig()
+        plt.close()
+
+
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
+
         image = plt.imshow(ass_hitmap.transpose(), aspect='auto', interpolation='none')
         cbar = plt.colorbar(image)
         cbar.set_label('Hits')
