@@ -40,7 +40,7 @@ def main(infile):
     chip_sn, idel, tdc_tdel_2dhist, tdel_row_2dhist, tdel_row_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist, lediff_row_2dhist = analyze_tdc(infile)
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
-    
+
     #tdc_tdel_2dhist[tdc_tdel_2dhist > 800] = np.nan
     #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')
     image = plt.imshow(tdc_tdel_2dhist, extent=[0, 4096/0.640/25, 256/0.640, 0], aspect='auto', interpolation='none')
@@ -48,10 +48,10 @@ def main(infile):
     cbar.set_label('Hits')
     #plt.clim(14,16)
     plt.gca().invert_yaxis()
-    
+
     ax.set_xlim([0, 80])
     ax.set_ylim([30, 200])
-    
+
     ax.set_ylabel('Trigger distance / ns')
     ax.set_xlabel('ToT / 25ns')
     ax.grid()
@@ -60,20 +60,20 @@ def main(infile):
     plt.tight_layout()
     plt.savefig(f'{out_prefix}_{chip_sn}_source_tdc_tdel_2dhist.png')
     plt.close()
-    
+
     # TDEL vs row
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
-    
+
     #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
     image = plt.imshow(tdel_row_2dhist, extent=[0, 511, 256/0.640, 0], aspect='auto', interpolation='none')
     cbar = plt.colorbar(image)
     cbar.set_label('Hits')
     #plt.clim(14,16)
     plt.gca().invert_yaxis()
-    
+
     #ax.set_xlim([479, 496])
     ax.set_ylim([0, 150])
-    
+
     ax.set_ylabel('Trigger distance / ns')
     ax.set_xlabel('Row')
     ax.grid()
@@ -82,20 +82,20 @@ def main(infile):
     plt.tight_layout()
     plt.savefig(f'{out_prefix}_{chip_sn}_source_tdel_row_2dhist_clust.png')
     plt.close()
-    
-    
+
+
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
-    
+
     #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
     image = plt.imshow(tdel_row_2dhist_tdc, extent=[0, 511, 256/0.640, 0], aspect='auto', interpolation='none')
     cbar = plt.colorbar(image)
     cbar.set_label('Average ToT/25ns')
     #plt.clim(14,16)
     plt.gca().invert_yaxis()
-    
+
     #ax.set_xlim([479, 496])
     ax.set_ylim([0, 150])
-    
+
     ax.set_ylabel('Trigger distance / ns')
     ax.set_xlabel('Row')
     ax.grid()
@@ -107,17 +107,17 @@ def main(infile):
 
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
-    
+
     #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
     image = plt.imshow(ts_le_2dhist, extent=[0, 128, 64, 0], aspect='auto', interpolation='none')
     cbar = plt.colorbar(image)
     cbar.set_label('Hits')
     #plt.clim(14,16)
     plt.gca().invert_yaxis()
-    
+
     #ax.set_xlim([479, 496])
     #ax.set_ylim([0, 100])
-    
+
     ax.set_ylabel('Corrected Timestamp / 25ns')
     ax.set_xlabel('Le BCID')
     ax.grid()
@@ -129,19 +129,26 @@ def main(infile):
 
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
-    
-    #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')  #, extent=[0, 512, 256/0.640, 0]
+
+    # Subtract time offset
     time_offset = np.nanargmax(lediff_row_2dhist[:, 0])
+    tmp = np.copy(lediff_row_2dhist)
+    sz0 = lediff_row_2dhist.shape[0]
+    for i in range(sz0):
+        lediff_row_2dhist[(i+sz0//2)%sz0,:] = tmp[(i+time_offset)%sz0,:]
+    time_offset = sz0//2
+    # Normalize each row to 1
     lediff_row_2dhist = np.divide(lediff_row_2dhist, np.nansum(lediff_row_2dhist, axis=0))
+    # Actual plotting
     image = plt.imshow(lediff_row_2dhist, aspect='auto', interpolation='none', extent=[0, 128, 64, 0])
     cbar = plt.colorbar(image)
     cbar.set_label('Hits (relative)')
     #plt.clim(14,16)
     plt.gca().invert_yaxis()
-    
+
     #ax.set_xlim([479, 496])
     ax.set_ylim([time_offset/16-5, time_offset/16+5])
-    
+
     ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
     ax.set_xlabel('Row')
     ax.grid()
@@ -154,18 +161,15 @@ def main(infile):
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
 
-    print(time_offset)
     weights = np.nan_to_num(lediff_row_2dhist[time_offset-5*16:time_offset+5*16, :])
     sum_w = np.sum(weights, axis=0)
-    print(weights.shape)
-    print((np.arange(time_offset-5*16, time_offset+5*16)).reshape((-1,1)).shape)
     sum_wv = np.sum((np.arange(time_offset-5*16, time_offset+5*16)).reshape((-1,1)) * weights, axis=0)
     lediff_row_mean = sum_wv / sum_w
     plt.plot(lediff_row_mean / 16)
-    
+
     #ax.set_xlim([479, 496])
     ax.set_ylim([time_offset/16-2, time_offset/16+2])
-    
+
     ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
     ax.set_xlabel('Row')
     ax.grid()
@@ -184,7 +188,7 @@ def main(infile):
     cbar.set_label('Hits')
     #plt.clim(14,16)
     plt.gca().invert_yaxis()
-    
+
     ax.set_xlabel('Column')
     ax.set_ylabel('Row')
     ax.grid()
@@ -197,17 +201,17 @@ def main(infile):
 
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=100)
-    
+
     #image = plt.imshow(hitor_del.transpose()[:,:32], aspect='auto', interpolation='none')
     image = plt.imshow(tdc_tot_2dhist, extent=[0, 127, 4096/16, 0], aspect='auto', interpolation='none')
     cbar = plt.colorbar(image)
     cbar.set_label('Hits')
     #plt.clim(14,16)
     plt.gca().invert_yaxis()
-    
+
     #ax.set_xlim([0, 80])
     ax.set_ylim([0, 128])
-    
+
     ax.set_ylabel('TDC Result / 25ns')
     ax.set_xlabel('ToT / 25ns')
     ax.grid()
@@ -217,14 +221,14 @@ def main(infile):
     plt.savefig(f'{out_prefix}_{chip_sn}_source_tdc_tot.png')
     plt.close()
 
-    
+
 
 
 import numba as nb
 
 @nb.njit(parallel=False)
-def ana_clist(seed_col, 
-              seed_row, 
+def ana_clist(seed_col,
+              seed_row,
               seed_le,     # TDC: Trigdist
               seed_te,
               token_id,    # TDC: Value
@@ -249,16 +253,16 @@ def ana_clist(seed_col,
                                 lediff_row_2dhist[((int(event_no[i])*16)-(rowi) - int(seed_le[i+dist]*16))%(64*16), int(seed_row[i+dist])] += 1
                     else:
                         break
-                        
 
-def analyze_tdc(p):    
+
+def analyze_tdc(p):
     h5file = tb.open_file(p, mode="r", title='configuration_in')
 
     clist = h5file.root.Cluster
     settings = table_to_dict(h5file.root.configuration_in.chip.settings)
     regs =     table_to_dict(h5file.root.configuration_in.chip.registers, key_name='register')
     #scan_params = h5file.root.configuration_out.scan.scan_params
-    
+
     tdc_tdel_2dhist = np.zeros([256, 4096])
     tdel_col_2dhist = np.zeros([256, 512])
     tdel_col_2dhist_tdc = np.zeros([256, 512])
@@ -266,27 +270,27 @@ def analyze_tdc(p):
     lediff_row_2dhist = np.zeros([64*16, 512])
     ass_hitmap = np.zeros([512, 512])
     tdc_tot_2dhist = np.zeros([4096, 128])
-    
-    ana_clist(clist.col('seed_col'), 
-              clist.col('seed_row'), 
+
+    ana_clist(clist.col('seed_col'),
+              clist.col('seed_row'),
               clist.col('seed_le'),
               clist.col('seed_te'),
               clist.col('seed_token_id'),  # TDC Value
               clist.col('event_number'),   # TDC Timestamp
               tdc_tdel_2dhist, tdel_col_2dhist, tdel_col_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist, lediff_row_2dhist)
-    
+
     # ana_hlist(hitlist.col('col'),          # 1022
     #           hitlist.col('row'),          # Trigger Dist
     #           hitlist.col('le'),           # Trigger dist
     #           hitlist.col('token_id'),     # TDC
     #           tdc_tdel_2dhist)
-    
+
     #unique, counts = np.unique(inj_tdc, return_counts=True)
     #print(dict(zip(unique, counts)))
 
     h5file.close()
-    
-    
+
+
     tdc_tdel_2dhist[tdc_tdel_2dhist == 0] = np.nan
     tdel_col_2dhist[tdel_col_2dhist == 0] = np.nan
     ts_le_2dhist[ts_le_2dhist == 0] = np.nan
@@ -294,7 +298,7 @@ def analyze_tdc(p):
     tdel_col_2dhist_tdc = np.divide(tdel_col_2dhist_tdc, tdel_col_2dhist)/16
     tdc_tot_2dhist[tdc_tot_2dhist == 0] = np.nan
     lediff_row_2dhist[lediff_row_2dhist == 0] = np.nan
-    
+
     return settings['chip_sn'], int(regs['IDEL']), tdc_tdel_2dhist, tdel_col_2dhist, tdel_col_2dhist_tdc, ts_le_2dhist, ass_hitmap, tdc_tot_2dhist, lediff_row_2dhist
 
 
@@ -304,14 +308,8 @@ if __name__ == "__main__":
     parser.add_argument("input_files", metavar="input_file", nargs="+",
                         help="The input _tdc_hitor.h5 file(s)")
     args = parser.parse_args()
-    
+
     for p in args.input_files:
         if not p.__contains__('interpreted'):
             p = analyze(p)
         main(p)
-    
-    
-    
-    
-    
-    
