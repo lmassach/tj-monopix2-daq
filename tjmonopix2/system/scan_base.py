@@ -1144,19 +1144,25 @@ class ScanBase(object):
             if issubclass(exc[0], fifo_readout.FifoError):
                 self.log.error('Aborting run...')
                 self.fifo_readout.stop_readout.set()
-    
+
     def update_temperature(self, pbar=None):
-        if True:
+        """
+        Gets temperature from NTC, stores it in the temperature table
+        and returns it. Optionally updates the progress bar pbar.
+        """
+        if self.daq.enable_NTC:
             now = time.time()
             if not self.temperature_start_time:
                 self.temperature_start_self = now
             temperature =  self.daq.get_temperature_NTC(connector=7)
-            pbar.set_postfix_str(f'T={temperature:5.1f}C')
+            if pbar is not None:
+                pbar.set_postfix_str(f'T={temperature:5.1f}C')
             self.temperature_values.append((now - self.temperature_start_time, temperature))
             return temperature
-        return 0.0
+        return np.nan
 
     def save_temperature(self):
+        """Saves the temperature table to the h5 file."""
         temperature_table = self.h5_file.create_table(self.h5_file.root, name='temperature', description=TemperatureTable,
                                                       title='Temperature vs time', filters=FILTER_TABLES)
         temperature_table.append(np.array(self.temperature_values, dtype=np.dtype([('time', np.float32), ('temperature', np.float32)])))
