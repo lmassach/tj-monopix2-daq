@@ -145,7 +145,7 @@ def main(infile):
         # Normalize each row to 1
         lediff_row_2dhist = np.divide(lediff_row_2dhist, np.nansum(lediff_row_2dhist, axis=0))
         # Actual plotting
-        image = plt.imshow(lediff_row_2dhist, aspect='auto', interpolation='none', extent=[0, 128, 64, 0])
+        image = plt.imshow(lediff_row_2dhist, aspect='auto', interpolation='none', extent=[0, 512, 64, 0])
         cbar = plt.colorbar(image)
         cbar.set_label('Hits (relative)')
         #plt.clim(14,16)
@@ -171,12 +171,12 @@ def main(infile):
         sum_w = np.sum(weights, axis=0)
         sum_wv = np.sum((np.arange(time_offset-5*16, time_offset+5*16)).reshape((-1,1)) * weights, axis=0)
         lediff_row_mean = sum_wv / sum_w
-        plt.plot(lediff_row_mean / 16)
+        plt.plot((lediff_row_mean - np.nanmean(lediff_row_mean)) / 16 * 25)
 
         #ax.set_xlim([479, 496])
-        ax.set_ylim([time_offset/16-2, time_offset/16+2])
+        ax.set_ylim([-50, 50])
 
-        ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
+        ax.set_ylabel('Le Difference to TDC Timestamp / ns')
         ax.set_xlabel('Row')
         ax.grid()
         ax.set_title(f'Row vs Le distance (IDEL: {idel})')
@@ -195,7 +195,7 @@ def main(infile):
         for i in range(16):
             lediff_row_2dhist_rebin[:,:] += lediff_row_2dhist[:,i::16]
         # Actual plotting
-        image = plt.imshow(lediff_row_2dhist_rebin, aspect='auto', interpolation='none', extent=[0, 128, 64, 0])
+        image = plt.imshow(lediff_row_2dhist_rebin, aspect='auto', interpolation='none', extent=[0, 512, 64, 0])
         cbar = plt.colorbar(image)
         cbar.set_label('Hits (relative)')
         #plt.clim(14,16)
@@ -221,12 +221,12 @@ def main(infile):
         sum_w = np.sum(weights, axis=0)
         sum_wv = np.sum((np.arange(time_offset-5*16, time_offset+5*16)).reshape((-1,1)) * weights, axis=0)
         lediff_row_mean = sum_wv / sum_w
-        plt.plot(np.arange(0, 512, 16) + 8, lediff_row_mean / 16)
+        plt.plot(np.arange(0, 512, 16) + 8, (lediff_row_mean - np.nanmean(lediff_row_mean)) / 16 * 25)
 
         #ax.set_xlim([479, 496])
-        ax.set_ylim([time_offset/16-2, time_offset/16+2])
+        ax.set_ylim([-50, 50])
 
-        ax.set_ylabel('Le Difference to TDC Timestamp / 25ns')
+        ax.set_ylabel('Le Difference to TDC Timestamp / ns')
         ax.set_xlabel('Row')
         ax.grid()
         ax.set_title(f'Row vs Le distance (IDEL: {idel})')
@@ -304,7 +304,7 @@ def ana_clist(seed_col,
                             ts_le_2dhist[((int(event_no[i])*16)-(rowi))%(64*16), int(seed_le[i+dist])] += 1
                             ass_hitmap[int(seed_col[i+dist]), int(seed_row[i+dist])] += 1
                             tdc_tot_2dhist[int(token_id[i]), tot] += 1
-                            if tot > 80:
+                            if tot > 20:
                                 lediff_row_2dhist[((int(event_no[i])*16)-(rowi) - int(seed_le[i+dist]*16))%(64*16), int(seed_row[i+dist])] += 1
                     else:
                         break

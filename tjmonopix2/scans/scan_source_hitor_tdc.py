@@ -24,13 +24,15 @@ signal.signal(signal.SIGINT, sig_handler)
 
 
 IDEL = int(os.environ.get('IDEL', 88))
+CHEQUER = int(os.environ.get('CHEQUER', 0))
+
 
 scan_configuration = {
-    'start_column': 448,
-    'stop_column': 496,
+    'start_column': 0,
+    'stop_column': 224,
     'start_row': 0,
     'stop_row': 512,
-    'scan_time': 3600,
+    'scan_time': 120*60,
 }
 
 
@@ -46,8 +48,23 @@ class SourceScan(ScanBase):
         self.chip.masks['hitor'][:, :] = False
         self.chip.masks['hitor'][start_column:stop_column, start_row:stop_row] = True
         
-        self.chip.masks['enable'][477, 0:256] = False
-        self.chip.masks['hitor'][477,  0:256] = False
+        self.chip.registers["ITHR"].write(40)
+        # self.chip.masks['enable'][477, 0:256] = False
+        # self.chip.masks['hitor'][477,  0:256] = False
+
+        # self.chip.masks['enable'][86:88, :] = False
+        # self.chip.masks['hitor'][86:88,  :] = False
+
+        # self.chip.masks['enable'][160:192, :] = False
+        # self.chip.masks['hitor'][160:192,  :] = False
+
+        # self.chip.masks['enable'][228:320, :] = False
+        # self.chip.masks['hitor'][228:320,  :] = False
+
+        # # Chequerboard
+        if CHEQUER:
+            self.chip.masks['enable'][0:512:2, 0:512:2] = False
+            self.chip.masks['enable'][1:512:2, 1:512:2] = False
 
         # Enable readout and bcid/freeze distribution only to columns we actually use
         dcols_enable = [0] * 16
