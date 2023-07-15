@@ -17,7 +17,7 @@ class_spec = [
     ('trigger_data_format', numba.uint8),
 
     ('hist_occ', numba.uint32[:, :, :]),
-    ('hist_tot', numba.uint16[:, :, :, :]),
+    ('hist_tot', numba.uint8[:, :, :, :]),
     ('hist_tdc', numba.uint32[:]),
     ('hist_tdc_trigdist', numba.uint32[:]),
     ('n_triggers', numba.int64),
@@ -214,10 +214,10 @@ class RawDataInterpreter(object):
 
     def reset(self):
         if self.low_ram:
-            self.hist_tot = np.zeros((512, 512, 1, 128), dtype=numba.uint16)
+            self.hist_tot = np.zeros((512, 512, 1, 128), dtype=numba.uint8)
             self.hist_occ = np.zeros((512, 512, 1), dtype=numba.uint32)
         else:
-            self.hist_tot = np.zeros((512, 512, self.n_scan_params, 128), dtype=numba.uint16)
+            self.hist_tot = np.zeros((512, 512, self.n_scan_params, 128), dtype=numba.uint8)
             self.hist_occ = np.zeros((512, 512, self.n_scan_params), dtype=numba.uint32)
         self.hist_tdc = np.zeros(4096, dtype=numba.uint32)
         self.hist_tdc_trigdist = np.zeros(256, dtype=numba.uint32)
@@ -239,5 +239,9 @@ class RawDataInterpreter(object):
 
     def _fill_hist(self, col, row, tot, scan_param_id):
         if not self.low_ram:
-            self.hist_tot[col, row, scan_param_id, tot] += 1
+            if self.hist_tot[col, row, scan_param_id, tot] < 255:
+                self.hist_tot[col, row, scan_param_id, tot] += 1
             self.hist_occ[col, row, scan_param_id] += 1
+        else:
+            self.hist_tot[col, row, 1, tot] += 1
+            self.hist_occ[col, row, 1] += 1
