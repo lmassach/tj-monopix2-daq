@@ -629,7 +629,7 @@ tdc_s3 #(
     .CLK320(CLK320),      // 320 MHz
     .CLK160(CLK160),      // 160 MHz
     .DV_CLK(CLK40),       // 40 MHz
-    .TDC_IN(LVDS_HITOR),  // HITOR
+    .TDC_IN(LEMO_RX[1]),  // HITOR
     .TDC_OUT(),
     .TRIG_IN(LEMO_RX[0]),
     .TRIG_OUT(),

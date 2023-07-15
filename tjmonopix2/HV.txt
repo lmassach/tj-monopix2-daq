@@ -1,0 +1,13 @@
+
+self.chip.registers["ITHR"].write(35)
+self.chip.registers["VRESET"].write(100)
+self.chip.registers["VCASP"].write(40)
+self.chip.registers["IBIAS"].write(60)
+self.chip.registers["ICASN"].write(8)
+
+
+# W8R19:
+self.chip.masks['enable'][86:88, start_row:stop_row] = False
+self.chip.masks['enable'][160:192, start_row:stop_row] = False
+self.chip.masks['enable'][288:320, start_row:stop_row] = False
+self.chip.masks['enable'][236, 386] = False

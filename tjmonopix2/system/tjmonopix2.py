@@ -1024,12 +1024,11 @@ class TJMonoPix2(object):
         else:
             raise RuntimeError('Timeout while waiting for register response.')
 
-    def write_cal(self, PulseStartCnfg=1, PulseStopCnfg=10, wait_cycles=0, write=True):
+    def write_cal(self, PulseStartCnfg=1, PulseStopCnfg=10, write=True):
         '''
             Command to send a digital or analog injection to the chip.
             Digital or analog injection is selected globally via the INJECTION_SELECT register.
             Need to reset BCID counter (register address 146) before injection.
-            wait_cycle delays injection by 4 BCID CLK cycles.
 
             For digital injection, only CAL_edge signal is relevant:
                 - CAL_edge_mode switches between step (0) and pulse (1) mode
@@ -1040,13 +1039,17 @@ class TJMonoPix2(object):
                 - CAL_aux_dly is counted in cycles of the 160MHz clock and sets the delay before the edge of the signal
             {Cal,ChipId[4:0]}-{PulseStartCnfg[5:1]},{PulseStartCnfg[0], PulseStopCnfg[13:10]}}-{{PulseStopCnfg[9:0]} [Cal +DD +DD]
         '''
+        psc = PulseStartCnfg % 32
+        delay = PulseStartCnfg // 32 + 1
+
         indata = self._write_register(146, 0b100, write=False)
         indata += self._write_register(146, 0b000, write=False)
-        indata += self.write_sync(write=False) * wait_cycles
+
+        indata += self.write_sync(write=False) * delay   # commenting out this line shifts two bcid clocks
         indata += [self.CMD_CAL]
         indata += [self.cmd_data_map[self.chip_id]]
-        indata += [self.cmd_data_map[(PulseStartCnfg & 0b11_1110) >> 1]]
-        indata += [self.cmd_data_map[((PulseStartCnfg << 4) & 0b10000) + ((PulseStopCnfg >> 10) & 0b1111)]]
+        indata += [self.cmd_data_map[(psc & 0b11_1110) >> 1]]
+        indata += [self.cmd_data_map[((psc << 4) & 0b10000) + ((PulseStopCnfg >> 10) & 0b1111)]]
         indata += [self.cmd_data_map[((PulseStopCnfg >> 5) & 0b11111)]]
         indata += [self.cmd_data_map[PulseStopCnfg & 0b11111]]
 
@@ -1055,9 +1058,9 @@ class TJMonoPix2(object):
 
         return indata
 
-    def inject(self, PulseStartCnfg=1, PulseStopCnfg=10, repetitions=1, latency=400, wait_cycles=0, write=True):
+    def inject(self, PulseStartCnfg=1, PulseStopCnfg=10, repetitions=1, latency=400, write=True):
         indata = self.write_sync(write=False) * 4
-        indata += self.write_cal(PulseStartCnfg=PulseStartCnfg, PulseStopCnfg=PulseStopCnfg, wait_cycles=wait_cycles, write=False)  # Injection
+        indata += self.write_cal(PulseStartCnfg=PulseStartCnfg, PulseStopCnfg=PulseStopCnfg, write=False)  # Injection
         indata += self.write_sync(write=False) * latency
 
         if write:

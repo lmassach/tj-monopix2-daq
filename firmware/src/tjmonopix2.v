@@ -260,22 +260,23 @@ BUFG BUFG_inst_CLK320  (.O(CLK320),  .I(CLK320_PLL));
 
 // MGT CLK (from Si570 or SMA input)
 wire CLKCMD;
-
-IBUFDS_GTE2 IBUFDS_refclk  
-(
-    .O               (CLKCMD),
-    .ODIV2           (),
-    .CEB             (1'b0),
-    .I               (MGT_REFCLK0_P),
-    .IB              (MGT_REFCLK0_N)
-);
+assign CLKCMD = CLK160;
+// IBUFDS_GTE2 IBUFDS_refclk  
+// (
+//     .O               (CLKCMD),
+//     .ODIV2           (),
+//     .CEB             (1'b0),
+//     .I               (MGT_REFCLK0_P),
+//     .IB              (MGT_REFCLK0_N)
+// );
 
 // -------  LEMO TX ------- //
 wire RJ45_CLK, RJ45_BUSY;
 wire CMD_LOOP_START_PULSE;
 wire [1:0] LEMO_MUX_TX1, LEMO_MUX_TX0, LEMO_MUX_RX1, LEMO_MUX_RX0;
 assign LEMO_TX0 = LEMO_MUX_TX0[1] ? (LEMO_MUX_TX0[0] ? 1'b0 : 1'b0) : (LEMO_MUX_TX0[0] ? CMD_LOOP_START_PULSE : RJ45_CLK);
-assign LEMO_TX1 = LEMO_MUX_TX1[1] ? (LEMO_MUX_TX1[0] ? 1'b0 : 1'b0) : (LEMO_MUX_TX1[0] ? 1'b0 : RJ45_BUSY);
+assign LEMO_TX1 = LEMO_RX1;
+//assign LEMO_TX1 = LEMO_MUX_TX1[1] ? (LEMO_MUX_TX1[0] ? 1'b0 : 1'b0) : (LEMO_MUX_TX1[0] ? 1'b0 : RJ45_BUSY);
 
 // -------  Diff buffer for BDAQ  ------- //
 `ifdef BDAQ53
