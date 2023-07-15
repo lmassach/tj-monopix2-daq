@@ -4,8 +4,10 @@ gitpython
 matplotlib
 numba
 numpy
+pixel-clusterizer
 pyyaml
 pyzmq
 scipy
 tables
 tqdm
+online_monitor>=0.6.0
