@@ -32,7 +32,7 @@ scan_configuration = {
     'stop_column': 224,
     'start_row': 0,
     'stop_row': 512,
-    'scan_time': 120*60,
+    'scan_time': 15*60,
 }
 
 
@@ -48,29 +48,28 @@ class SourceScan(ScanBase):
         self.chip.masks['hitor'][:, :] = False
         self.chip.masks['hitor'][start_column:stop_column, start_row:stop_row] = True
         
-        self.chip.registers["ITHR"].write(40)
         # self.chip.masks['enable'][477, 0:256] = False
         # self.chip.masks['hitor'][477,  0:256] = False
 
-        # self.chip.masks['enable'][86:88, :] = False
-        # self.chip.masks['hitor'][86:88,  :] = False
-
-        # self.chip.masks['enable'][160:192, :] = False
-        # self.chip.masks['hitor'][160:192,  :] = False
+        colis = []  #[253, 340, 375, 285, 286, 287, 288, 362, 300, 353]
+        for c in colis:
+            self.chip.masks['enable'][c, :] = False
+            self.chip.masks['hitor'][c,  :] = False
 
         # self.chip.masks['enable'][228:320, :] = False
         # self.chip.masks['hitor'][228:320,  :] = False
 
         # # Chequerboard
         if CHEQUER:
-            self.chip.masks['enable'][0:512:2, 0:512:2] = False
-            self.chip.masks['enable'][1:512:2, 1:512:2] = False
+            print('Configuring Chequer')
+            self.chip.masks['enable'][0:512:2, 1:512:2] = False
+            self.chip.masks['enable'][1:512:2, 0:512:2] = False
 
         # Enable readout and bcid/freeze distribution only to columns we actually use
         dcols_enable = [0] * 16
         for c in range(start_column, stop_column):
             dcols_enable[c // 32] |= (1 << ((c >> 1) & 15))
-        for c in []:  # List of disabled columns
+        for c in colis:  # List of disabled columns
             dcols_enable[c // 32] &= ~(1 << ((c >> 1) & 15))
         for i, v in enumerate(dcols_enable):
             self.chip._write_register(155 + i, v)  # EN_RO_CONF

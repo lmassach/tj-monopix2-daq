@@ -50,7 +50,7 @@ def main(infile):
         #plt.clim(14,16)
         plt.gca().invert_yaxis()
 
-        ax.set_xlim([0, 80])
+        ax.set_xlim([0, 128])
         ax.set_ylim([30, 200])
 
         ax.set_ylabel('Trigger distance / ns')
