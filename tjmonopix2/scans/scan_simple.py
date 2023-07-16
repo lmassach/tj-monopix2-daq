@@ -6,7 +6,7 @@
 #
 
 import time
-import threading
+from math import inf
 from tqdm import tqdm
 
 from tjmonopix2.analysis import analysis, plotting
@@ -18,15 +18,14 @@ scan_configuration = {
     'start_row': 0,
     'stop_row': 512,
 
-    'scan_timeout': False,    # Timeout for scan after which the scan will be stopped, in seconds; if False no limit on scan time
-    'max_triggers': 1000000,  # Number of maximum received triggers after stopping readout, if False no limit on received trigger
+    'scan_timeout': 60,  # Timeout for scan after which the scan will be stopped, in seconds; if False no limit on scan time
+    'max_triggers': False,  # Number of maximum received triggers after stopping readout, if False no limit on received trigger
+    # NOTE you can set no limit on either of the above, and the scan will just run until CTRL+C is used to stop it
 }
 
 
 class SimpleScan(ScanBase):
     scan_id = 'simple_scan'
-
-    stop_scan = threading.Event()
 
     def _configure(self, scan_timeout=10, max_triggers=False, start_column=0, stop_column=512, start_row=0, stop_row=512, **_):
         if scan_timeout and max_triggers:
@@ -36,51 +35,46 @@ class SimpleScan(ScanBase):
         self.chip.masks.apply_disable_mask()
         self.chip.masks.update()
 
-        self.daq.configure_tlu_veto_pulse(veto_length=500)
-        self.daq.configure_tlu_module(max_triggers=max_triggers)
+        if max_triggers:
+            self.daq.configure_tlu_veto_pulse(veto_length=500)
+            self.daq.configure_tlu_module(max_triggers=max_triggers)
+
+        # Configure graceful exit on CTRL+C
+        self.enable_graceful_exit()
 
     def _scan(self, scan_timeout=10, max_triggers=False, **_):
-        def timed_out():
-            if scan_timeout:
-                current_time = time.time()
-                if current_time - start_time > scan_timeout:
-                    self.log.info('Scan timeout was reached')
-                    return True
-            return False
-
+        start_time = time.time()
         if scan_timeout:
-            self.pbar = tqdm(total=scan_timeout, unit='')  # [s]
+            self.pbar = tqdm(total=scan_timeout, unit=' s')
+            end_time = start_time + scan_timeout
         elif max_triggers:
             self.pbar = tqdm(total=max_triggers, unit=' Triggers')
-        start_time = time.time()
+            end_time = inf
+        else:
+            self.pbar = tqdm(unit=' s')
+            end_time = inf
 
         with self.readout():
-            self.stop_scan.clear()
-            self.daq.enable_tlu_module()
+            if max_triggers:
+                self.daq.enable_tlu_module()
+                triggers = 0
 
-            while not (self.stop_scan.is_set() or timed_out()):
+            while not (self.should_exit_gracefully or time.time() > end_time or (max_triggers and triggers >= max_triggers)):
+                if max_triggers:
+                    triggers = self.daq.get_trigger_counter()
+                else:
+                    now = time.time()
+
+                time.sleep(1)
+
+                # Update progress bar
                 try:
                     if max_triggers:
-                        triggers = self.daq.get_trigger_counter()
-                    time.sleep(1)
-
-                    # Update progress bar
-                    try:
-                        if scan_timeout:
-                            self.pbar.update(1)
-                        elif max_triggers:
-                            self.pbar.update(self.daq.get_trigger_counter() - triggers)
-                    except ValueError:
-                        pass
-
-                    # Stop scan if reached trigger limit
-                    if max_triggers and triggers >= max_triggers:
-                        self.stop_scan.set()
-                        self.log.info('Trigger limit was reached: {0}'.format(max_triggers))
-
-                except KeyboardInterrupt:  # React on keyboard interupt
-                    self.stop_scan.set()
-                    self.log.info('Scan was stopped due to keyboard interrupt')
+                        self.pbar.update(self.daq.get_trigger_counter() - triggers)
+                    else:
+                        self.pbar.update(time.time() - now)
+                except ValueError:
+                    pass
 
         self.pbar.close()
         if max_triggers:

@@ -61,6 +61,9 @@ class AnalogScan(ScanBase):
         #temp = self.daq.get_temperature_NTC()
         #print(f'Temperature: {temp}C')
 
+        # Configure graceful exit on CTRL+C
+        self.enable_graceful_exit()
+
     def _scan(self, n_injections=100, start_column=0, stop_column=16, **_):
         no_cols = stop_column - start_column
         pixel_range = range(0, no_cols*512, 1)
@@ -82,6 +85,10 @@ class AnalogScan(ScanBase):
 
             self.chip.masks['enable'][col, row] = False
             self.chip.masks['injection'][col, row] = False
+
+            if self.should_exit_gracefully:
+                break
+
         pbar.close()
         self.log.success('Scan finished')
 

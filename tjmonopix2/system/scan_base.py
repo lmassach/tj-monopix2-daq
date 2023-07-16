@@ -413,7 +413,7 @@ class ScanBase(object):
         if self._graceful_exit_enabled:
             signal.signal(signal.SIGINT, self._graceful_exit_prev_handler)
             if self.should_exit_gracefully:
-                print("\x1b[33mScan completed successfully. CTRL+C will be re-sent to this process to stop it. KeyboardInterrupt should be raised now.\x1b[0m")
+                print("\x1b[36;1mScan completed successfully. CTRL+C will be re-sent to this process to stop it. KeyboardInterrupt should be raised now.\x1b[0m")
                 os.kill(os.getpid(), signal.SIGINT)
 
     def start(self):
