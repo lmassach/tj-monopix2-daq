@@ -79,7 +79,7 @@ class AnalogScan(ScanBase):
             self.store_scan_par_values(scan_param_id=scan_param_id, row=row, col=col)
             with self.readout(scan_param_id=scan_param_id):
                 shift_and_inject(chip=self.chip, n_injections=n_injections, pbar=pbar, scan_param_id=scan_param_id)
-            
+
             self.chip.masks['enable'][col, row] = False
             self.chip.masks['injection'][col, row] = False
         pbar.close()

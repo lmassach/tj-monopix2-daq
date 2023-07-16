@@ -15,17 +15,8 @@ from tqdm import tqdm
 from tjmonopix2.system.scan_base import ScanBase
 from tjmonopix2.analysis import analysis
 
-
-STOP_RUNNING = False
-def sig_handler(sig, _):
-    global STOP_RUNNING
-    STOP_RUNNING = True
-signal.signal(signal.SIGINT, sig_handler)
-
-
 IDEL = int(os.environ.get('IDEL', 88))
 CHEQUER = int(os.environ.get('CHEQUER', 0))
-
 
 scan_configuration = {
     'start_column': 0,
@@ -35,9 +26,7 @@ scan_configuration = {
     'scan_time': 15*60,
 }
 
-
 registers = ['IBIAS', 'ICASN', 'IDB', 'ITUNE', 'ITHR', 'ICOMP', 'IDEL', 'VRESET', 'VCASP', 'VH', 'VL', 'VCLIP', 'VCASC', 'IRAM']
-
 
 class SourceScan(ScanBase):
     scan_id = 'source_scan_hitor_tdc'
@@ -47,7 +36,7 @@ class SourceScan(ScanBase):
         self.chip.masks['injection'][start_column:stop_column, start_row:stop_row] = False
         self.chip.masks['hitor'][:, :] = False
         self.chip.masks['hitor'][start_column:stop_column, start_row:stop_row] = True
-        
+
         # self.chip.masks['enable'][477, 0:256] = False
         # self.chip.masks['hitor'][477,  0:256] = False
 
@@ -89,7 +78,7 @@ class SourceScan(ScanBase):
         # self.chip.registers["IBIAS"].write(60)
         # self.chip.registers["ICASN"].write(8)
         self.chip.registers["IDEL"].write(IDEL)
-        
+
         # configure TDC in FPGA
         self.daq['tdc'].EN_WRITE_TIMESTAMP = 1
         self.daq['tdc'].EN_TRIGGER_DIST = 1
@@ -97,18 +86,21 @@ class SourceScan(ScanBase):
         self.daq.configure_tdc_module()
         self.daq.enable_tdc_module()
 
+        # Configure graceful exit on CTRL+C
+        self.enable_graceful_exit()
+
 
     def _scan(self, scan_time=120, **_):
-        
+
 
         pbar = tqdm(total=int(scan_time), unit='s')
         now = time.time()
         end_time = now + scan_time
-        
+
         with self.readout(scan_param_id=0):
-            while now < end_time and not STOP_RUNNING:
+            while now < end_time and not self.should_exit_gracefully:
                 self.update_temperature(pbar)
-                
+
                 sleep_time = min(1, end_time - now)
                 time.sleep(sleep_time)
                 last_time = now
@@ -116,9 +108,6 @@ class SourceScan(ScanBase):
 
                 pbar.update(int(round(now - last_time)))
 
-        if STOP_RUNNING:
-            self.log.warning("Trying to stop gracefully without breaking output files")
-            self.log.warning("Use CTRL+\\ (SIGQUIT) if you want to kill now")
         pbar.close()
         self.save_temperature()
 

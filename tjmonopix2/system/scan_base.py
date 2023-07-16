@@ -10,6 +10,7 @@ import collections
 import inspect
 import multiprocessing
 import os
+import signal
 import time
 import traceback
 from collections import OrderedDict
@@ -229,6 +230,11 @@ class ScanBase(object):
         self.temperature_start_time = 0
         self.temperature_values = []
 
+        # Graceful exit (CTRL+C handling)
+        self.should_exit_gracefully = False
+        self._graceful_exit_enabled = False
+        self._graceful_exit_prev_handler = None
+
     def init(self, force=False):
         try:
             self.errors_occured = False
@@ -403,6 +409,12 @@ class ScanBase(object):
         self._close_logfiles()
         if self.chips:
             self._unset_chip_handles()  # allows for gc of chip objects
+        # If graceful exit was enabled, reset signal handler and re-raise SIGINT
+        if self._graceful_exit_enabled:
+            signal.signal(signal.SIGINT, self._graceful_exit_prev_handler)
+            if self.should_exit_gracefully:
+                print("\x1b[33mScan completed successfully. CTRL+C will be re-sent to this process to stop it. KeyboardInterrupt should be raised now.\x1b[0m")
+                os.kill(os.getpid(), signal.SIGINT)
 
     def start(self):
         '''
@@ -1167,6 +1179,37 @@ class ScanBase(object):
                                                       title='Temperature vs time', filters=FILTER_TABLES)
         temperature_table.append(np.array(self.temperature_values, dtype=np.dtype([('time', np.float32), ('temperature', np.float32)])))
 
+    def enable_graceful_exit(self):
+        """
+        Enables handling of CTRL+C (SIGINT) for exiting without
+        corrupting output files. Example usage:
 
-if __name__ == '__main__':
-    pass
+            class MyScan(ScanBase):
+                def _configure(self, ...):
+                    self.enable_graceful_exit()
+
+                def _scan(self, ...):
+                    with self.readout():
+                        while not self.should_exit_gracefully:
+                            sleep(1)
+
+            if __name__ == "__main__":
+                with MyScan() as scan:
+                    scan.start()
+
+        It is fundamental to frequently check if should_exit_gracefully
+        was set during the scan loop. If CTRL+C (SIGINT) is received, a
+        warning message is shown (suggesting to use CTRL+\ (SIGQUIT) to
+        kill the process immediately) and the scan is completed without
+        raising any exception; as soon as the scan, analysis and
+        plotting are finished, SIGINT is re-issued to the process
+        (raising a KeyboardInterrupt exception) so that the shell
+        executing python knows that the process terminated due to SIGINT
+        (see https://unix.stackexchange.com/a/230568 for details).
+        """
+        def handler(sig, stack):
+            self.should_exit_gracefully = True
+            self.log.warning("Trying to stop gracefully without breaking output files")
+            self.log.warning("Use CTRL+\\ (SIGQUIT) if you want to kill now")
+        self._graceful_exit_prev_handler = signal.signal(signal.SIGINT, handler)
+        self._graceful_exit_enabled = True
