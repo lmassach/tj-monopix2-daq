@@ -36,6 +36,9 @@ event_dtype = np.dtype([
     ("column", "<u2"),
     ("row", "<u2"),
     ("charge", "<u1"),
+    ("le", "<i1"),
+    ("te", "<i1"),
+    ("token_id", "<i4"),
     ("timestamp", "<i8"),
 ])
 
