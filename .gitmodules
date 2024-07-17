@@ -1,0 +1,3 @@
+[submodule "online_monitor"]
+	path = online_monitor
+	url = https://github.com/lmassach/online_monitor.git

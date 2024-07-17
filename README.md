@@ -5,15 +5,26 @@
 Data acquisition system for the TJ-Monopix2 pixel detector.
 
 # Installation
-Clone the repository and install the required dependencies with
-```bash
-pip install basil-daq coloredlogs GitPython matplotlib numba numpy pyyaml pyzmq scipy tables tqdm 
-```
-Afterwards install the package (editable) by running
-```bash
-pip install -e .
-```
-from the root folder.
+1. Clone this repository
+    ```bash
+    git clone -b development --recursive https://github.com/lmassach/tj-monopix2-daq.git
+    cd tj-monopix2-daq
+    ```
+2. (Optional) Make a virtual environment
+    ```bash
+    python -m venv --symlinks --prompt tjm2 --system-site-packages venv
+    source venv/bin/activate
+    ```
+3. Install the _patched_ online monitor
+    ```bash
+    cd online_monitor
+    pip install .
+    cd ..
+    ```
+4. Install the tj-monopix2-daq package (editable)
+    ```bash
+    pip install -e .
+    ```
 
 ## Firmware compilation
 Clone [basil](https://github.com/SiLab-Bonn/basil) to any location and install it by running `pip install -e .` from its root folder.
@@ -46,7 +57,7 @@ Run
 ```bash
 python manage_firmware.py --firmware <path-to-bit-or-mcs-file>
 ```
-and specify the path to the firmware file. The file type determines if it is written to FPGA (`.bit`) or persistent flash memory (`.mcs`). 
+and specify the path to the firmware file. The file type determines if it is written to FPGA (`.bit`) or persistent flash memory (`.mcs`).
 
 ## Hardware configuration
 ### Connecting a module
